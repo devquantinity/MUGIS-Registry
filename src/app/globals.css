@@ -1,26 +1,364 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* ---------------------------------------------------------------
+   MUGIS Registry design tokens
+   Palette sampled from the official MUGIS mark:
+   deep green #006C38 + gold #C8861E.
+   The whole theme lives here — swap these to re-skin the app.
+   --------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-cream: 244 246 243;  /* app background  #F4F6F3 */
+  --color-paper: 255 255 255;  /* cards           #FFFFFF */
+  --color-ink: 26 32 28;       /* headings        #1A201C */
+  --color-soot: 100 110 103;   /* body text       #646E67 */
+  --color-line: 226 231 226;   /* borders         #E2E7E2 */
+
+  /* brand green */
+  --color-forest-50: 236 246 240;  /* #ECF6F0 selected tint */
+  --color-forest-100: 214 238 224; /* #D6EEE0 light tint    */
+  --color-forest-200: 168 216 189; /* #A8D8BD               */
+  --color-forest-500: 0 108 56;    /* #006C38 primary       */
+  --color-forest-600: 0 88 45;     /* #00582D hover         */
+  --color-forest-700: 0 66 34;     /* #004222 deep          */
+
+  /* gold accent */
+  --color-gold-100: 250 240 219;   /* #FAF0DB */
+  --color-gold-300: 240 205 138;   /* #F0CD8A */
+  --color-gold-400: 224 160 32;    /* #E0A020 */
+  --color-gold-500: 200 134 30;    /* #C8861E main accent */
+  --color-gold-600: 168 110 22;    /* #A86E16 pressed     */
+  --color-goldink: 38 26 4;        /* #261A04 text on gold */
+
+  /* positive */
+  --color-sage-100: 214 238 224;  /* #D6EEE0 */
+  --color-sage-600: 21 122 71;    /* #157A47 */
+  --color-sage-700: 16 96 56;     /* #106038 */
+
+  /* danger */
+  --color-danger-50: 253 238 236;  /* #FDEEEC */
+  --color-danger-200: 245 198 193; /* #F5C6C1 */
+  --color-danger-600: 200 46 40;   /* #C82E28 */
+  --color-danger-700: 162 36 30;   /* #A2241E */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  @apply bg-cream text-soot;
+}
+
+/* focus rings — gold, so they read against the green UI */
+*:focus-visible {
+  outline: 2px solid rgb(var(--color-forest-500) / 0.6);
+  outline-offset: 1px;
+  border-radius: 8px;
+}
+
+/* ---------------------------------------------------------------
+   Scrollbars — thin & subtle.
+   --------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--color-ink) / 0.1) transparent;
+}
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--color-ink) / 0.08);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--color-ink) / 0.2); }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+.bg-forest-500 ::-webkit-scrollbar-thumb,
+.bg-forest-500::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.14);
+}
+
+@layer components {
+  .card { @apply rounded-[14px] border border-white/60 bg-white/65 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-xl dark:border-white/[0.07] dark:bg-paper/70; }
+  .input {
+    @apply w-full rounded-[10px] border border-ink/10 bg-white/80 px-3 py-2 text-sm text-ink placeholder:text-soot/40 focus:border-forest-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-500/15 dark:bg-white/[0.06] dark:focus:bg-white/[0.09];
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold text-soot/80;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-[10px] px-3.5 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary { @apply btn bg-forest-500 text-white hover:bg-forest-600 active:bg-forest-700; }
+  .btn-gold { @apply btn bg-gold-500 text-goldink shadow-gold hover:bg-gold-600; }
+  .btn-secondary { @apply btn border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-ink shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm hover:bg-white/90 dark:hover:bg-white/[0.12]; }
+  .btn-ghost { @apply btn text-forest-500 hover:bg-forest-50; }
+  .th { @apply px-4 py-2.5 text-left text-[11px] font-medium text-soot/55; }
+  .td { @apply px-4 py-3 text-sm text-ink; }
+  .table-card { @apply card overflow-x-auto; }
+  .table-card table { min-width: 640px; }
+}
+
+/* native selects: consistent chevron across browsers */
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.1rem;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23646E67' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 13px;
+}
+
+.bottom-safe { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+
+/* ---------------------------------------------------------------
+   Sign-in screen animations
+   --------------------------------------------------------------- */
+@keyframes mg-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes mg-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(24px, -18px) scale(1.08); }
+  66% { transform: translate(-18px, 14px) scale(0.96); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes mg-drift-2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-28px, 20px) scale(1.1); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes mg-grid-pan {
+  0% { background-position: 0 0; }
+  100% { background-position: 44px 44px; }
+}
+@keyframes mg-rise {
+  0% { transform: scaleY(0.4); opacity: 0.35; }
+  50% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(0.4); opacity: 0.35; }
+}
+@keyframes mg-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.mg-pop { animation: mg-pop 130ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes mg-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mg-spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.mg-float { animation: mg-float 6s ease-in-out infinite; }
+.mg-drift { animation: mg-drift 18s ease-in-out infinite; }
+.mg-drift-2 { animation: mg-drift-2 22s ease-in-out infinite; }
+.mg-grid-pan { animation: mg-grid-pan 3s linear infinite; }
+.mg-fade-up { animation: mg-fade-up 0.5s ease-out both; }
+.mg-bar { transform-origin: bottom; animation: mg-rise 2.6s ease-in-out infinite; }
+.mg-spin-slow { animation: mg-spin-slow 60s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-float, .mg-drift, .mg-drift-2, .mg-grid-pan,
+  .mg-bar, .mg-fade-up, .mg-spin-slow, .mg-pop {
+    animation: none !important;
+  }
+}
+
+@media print {
+  body { background: white !important; }
+  .no-print { display: none !important; }
+  .print-area { box-shadow: none !important; border: none !important; }
+}
+
+
+/* ---------------------------------------------------------------
+   Appearance: accent themes + dark mode.
+   `data-accent` on <html> remaps the forest scale; `.dark` remaps the
+   neutrals. Set by src/lib/theme.tsx (persisted per browser).
+   --------------------------------------------------------------- */
+:root {
+  --chart-accent: #1B7A4A;
+  --bd-base: #06301C;
+  --glow-a: 27 122 74;
+  --glow-b: 9 74 42;
+  --wash-a: 27 122 74;
+  --bloom: 200 134 30;
+  --bloom-o: 0.32;
+}
+
+[data-accent="blue"] {
+  --color-forest-50: 239 244 249;
+  --color-forest-100: 219 229 242;
+  --color-forest-200: 178 201 227;
+  --color-forest-500: 30 95 174;
+  --color-forest-600: 24 77 142;
+  --color-forest-700: 18 58 106;
+  --chart-accent: #346FB6;
+  --bd-base: #081F38;
+  --glow-a: 62 117 185;
+  --glow-b: 20 65 118;
+  --wash-a: 30 95 174;
+}
+
+[data-accent="amber"] {
+  --color-forest-50: 248 244 238;
+  --color-forest-100: 238 231 216;
+  --color-forest-200: 219 204 172;
+  --color-forest-500: 150 105 11;
+  --color-forest-600: 122 86 9;
+  --color-forest-700: 92 64 7;
+  --chart-accent: #A07823;
+  --bd-base: #2E2008;
+  --glow-a: 165 126 45;
+  --glow-b: 102 71 7;
+  --wash-a: 150 105 11;
+}
+
+[data-accent="orange"] {
+  --color-forest-50: 251 242 238;
+  --color-forest-100: 245 225 216;
+  --color-forest-200: 234 190 172;
+  --color-forest-500: 194 65 12;
+  --color-forest-600: 158 53 10;
+  --color-forest-700: 118 40 7;
+  --chart-accent: #C85424;
+  --bd-base: #331507;
+  --glow-a: 203 92 46;
+  --glow-b: 132 44 8;
+  --wash-a: 194 65 12;
+}
+
+[data-accent="purple"] {
+  --color-forest-50: 245 240 252;
+  --color-forest-100: 232 221 249;
+  --color-forest-200: 205 182 242;
+  --color-forest-500: 109 40 217;
+  --color-forest-600: 89 33 177;
+  --color-forest-700: 66 24 132;
+  --chart-accent: #7C3EDD;
+  --bd-base: #200E38;
+  --glow-a: 129 70 222;
+  --glow-b: 74 27 148;
+  --wash-a: 109 40 217;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-cream: 16 22 19;   /* app background  #101613 */
+  --color-paper: 24 31 27;   /* cards           #181F1B */
+  --color-ink: 232 238 234;  /* headings        #E8EEEA */
+  --color-soot: 148 159 152; /* body text       #949F98 */
+  --color-line: 44 53 48;    /* borders         #2C3530 */
+  --color-gold-100: 46 37 15;
+  --color-gold-300: 122 96 40;
+  --color-sage-100: 21 43 32;
+  --color-sage-600: 82 183 127;
+  --color-sage-700: 110 205 155;
+  --color-danger-50: 45 21 19;
+  --color-danger-200: 106 40 36;
+  --color-danger-600: 226 89 79;
+  --color-danger-700: 238 120 110;
+  --bloom-o: 0.18;
+  --color-forest-50: 13 36 25;
+  --color-forest-100: 12 44 29;
+  --color-forest-200: 9 60 35;
+  --color-forest-500: 56 140 100;
+  --color-forest-600: 87 158 124;
+  --color-forest-700: 117 176 148;
+  --chart-accent: #61A484;
+  --bd-base: #050F0A;
+  --glow-a: 0 65 34;
+  --glow-b: 0 38 20;
+}
+
+.dark[data-accent="blue"] {  /* neutrals tinted toward the accent, not green */
+  --color-cream: 18 21 25;
+  --color-paper: 26 29 33;
+  --color-ink: 231 233 234;
+  --color-soot: 146 150 152;
+  --color-line: 44 49 53;
+  --color-forest-50: 18 34 44;
+  --color-forest-100: 20 41 59;
+  --color-forest-200: 22 54 87;
+  --color-forest-500: 80 130 192;
+  --color-forest-600: 106 149 202;
+  --color-forest-700: 134 169 211;
+  --chart-accent: #749CCD;
+  --bd-base: #05101E;
+  --glow-a: 18 57 104;
+  --glow-b: 10 33 61;
+}
+
+.dark[data-accent="amber"] {  /* neutrals tinted toward the accent, not green */
+  --color-cream: 24 21 17;
+  --color-paper: 32 30 25;
+  --color-ink: 233 233 231;
+  --color-soot: 150 151 147;
+  --color-line: 51 50 43;
+  --color-forest-50: 37 35 18;
+  --color-forest-100: 51 44 17;
+  --color-forest-200: 75 59 15;
+  --color-forest-500: 173 138 65;
+  --color-forest-600: 186 156 94;
+  --color-forest-700: 198 174 123;
+  --chart-accent: #BEA268;
+  --bd-base: #150F04;
+  --glow-a: 90 63 7;
+  --glow-b: 52 37 4;
+}
+
+.dark[data-accent="orange"] {  /* neutrals tinted toward the accent, not green */
+  --color-cream: 26 19 17;
+  --color-paper: 34 28 25;
+  --color-ink: 234 233 231;
+  --color-soot: 151 149 147;
+  --color-line: 54 47 43;
+  --color-forest-50: 44 29 18;
+  --color-forest-100: 62 33 17;
+  --color-forest-200: 94 41 16;
+  --color-forest-500: 207 107 65;
+  --color-forest-600: 215 130 95;
+  --color-forest-700: 222 152 124;
+  --chart-accent: #D98968;
+  --bd-base: #170A04;
+  --glow-a: 116 39 7;
+  --glow-b: 68 23 4;
+}
+
+.dark[data-accent="purple"] {  /* neutrals tinted toward the accent, not green */
+  --color-cream: 22 18 27;
+  --color-paper: 30 27 36;
+  --color-ink: 232 232 235;
+  --color-soot: 149 149 153;
+  --color-line: 49 46 55;
+  --color-forest-50: 31 25 51;
+  --color-forest-100: 40 27 70;
+  --color-forest-200: 57 30 106;
+  --color-forest-500: 141 87 225;
+  --color-forest-600: 159 113 230;
+  --color-forest-700: 176 139 234;
+  --chart-accent: #A47AE7;
+  --bd-base: #100820;
+  --glow-a: 65 24 130;
+  --glow-b: 38 14 76;
+}
+
+.dark select.input {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23949F98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
