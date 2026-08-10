@@ -128,7 +128,7 @@ export default function ExportPage() {
         subtitle="Every export is written to the audit trail with the user, scope and column count."
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <SectionTitle right={
             <div className="flex gap-2">
@@ -138,7 +138,7 @@ export default function ExportPage() {
           }>
             Parameter groups
           </SectionTitle>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {groups.map((g) => {
               const on = selected.includes(g.id);
               return (

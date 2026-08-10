@@ -108,7 +108,7 @@ export function GroupCard({ group, data, patient, onChange, readOnly }: {
 }) {
   const shown = group.fields.filter((f) => visible(f, data));
   return (
-    <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
       {shown.map((f) => (
         <div key={f.id} className={f.type === "textarea" ? "sm:col-span-2 xl:col-span-3" : ""}>
           <label className="label">{f.label}{f.unit && f.type !== "number" ? ` (${f.unit})` : ""}</label>
@@ -150,7 +150,7 @@ export function EpisodeForm({ cancerType, data, patient, onChange, readOnly, onE
   }
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[270px,minmax(0,1fr)]">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[270px,minmax(0,1fr)]">
       {/* ---------- left rail: where am I ---------- */}
       <div className="lg:sticky lg:top-[72px]">
         <Card padded={false} className="overflow-hidden">

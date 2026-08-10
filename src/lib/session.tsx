@@ -37,7 +37,7 @@ type Ctx = {
 };
 
 const SessionContext = createContext<Ctx | null>(null);
-const KEY = "mugis.session.v2";
+const KEY = "mugis.session.v3";
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);

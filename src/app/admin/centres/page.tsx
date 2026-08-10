@@ -47,7 +47,7 @@ export default function AdminCentresPage() {
         subtitle="Placeholder list — replace with the confirmed MUGIS centres before go-live."
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Centres" value={CENTRES.length} tone="info" />
         <Stat label="Patients nationwide" value={totalPts} tone="info" />
         <Stat label="Registered users" value={state.users.length} tone="info" />

@@ -58,7 +58,7 @@ export default function EpisodesPage() {
       </div>
 
       <Card className="mb-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <label className="label">Search</label>
             <input className="input" placeholder="Patient, registry number, procedure…"

@@ -163,7 +163,7 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Patients" value={patients.length} chip={windows.patients} tone="info" icon={TILE_ICONS.patients} />
         <Stat label="Cancer episodes" value={episodes.length} chip={windows.diagnoses} tone="info" icon={TILE_ICONS.episodes} />
         <Stat label="Resections performed" value={stats.withSurgery} chip={windows.surgeries} tone="ok" icon={TILE_ICONS.resections} />
@@ -171,12 +171,12 @@ export default function DashboardPage() {
           sub={`${stats.incomplete} records below 80%`} tone={stats.avgComp >= 80 ? "ok" : "warn"} icon={TILE_ICONS.complete} />
       </div>
 
-      <div className="mt-3 grid gap-3 xl:grid-cols-12">
-        <Card className="xl:col-span-5">
+      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
+        <Card className="min-w-0 xl:col-span-5">
           <SectionTitle right={<Badge tone="muted">by diagnosis date</Badge>}>{`New diagnoses — ${range === "all" ? "24" : range.replace("m", "")} months`}</SectionTitle>
           <AreaChart data={monthly} height={150} />
         </Card>
-        <Card className="xl:col-span-4">
+        <Card className="min-w-0 xl:col-span-4">
           <SectionTitle right={<Badge tone="info">AJCC 8th ed.</Badge>}>Stage distribution</SectionTitle>
           {stageDist.length ? (
             <BarChart
@@ -190,14 +190,14 @@ export default function DashboardPage() {
           ) :
             <p className="py-8 text-center text-sm text-soot/60">No episodes to chart yet.</p>}
         </Card>
-        <Card className="xl:col-span-3">
+        <Card className="min-w-0 xl:col-span-3">
           <SectionTitle>Surgical approach</SectionTitle>
           {byApproach.length ? <DonutChart data={byApproach} unit="operations" size={126} stacked /> :
             <p className="py-8 text-center text-sm text-soot/60">No operative data yet.</p>}
         </Card>
       </div>
 
-      <div className="mt-3 grid items-start gap-3 lg:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
         <Card>
           <SectionTitle right={<Badge tone="muted">{range === "all" ? "all time" : `last ${range.replace("m", "")} months`}</Badge>}>
             Episodes by centre

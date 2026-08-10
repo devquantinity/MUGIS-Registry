@@ -90,10 +90,10 @@ export default function PatientDetailPage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <SectionTitle>Demography</SectionTitle>
-          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
             {[
               ["Registry number", patient.registryNo],
               ["MyKad", hidden ? "—" : maskMykad(patient.mykad, reveal)],
@@ -154,7 +154,7 @@ export default function PatientDetailPage() {
         {eps.length === 0 ? (
           <Card><p className="py-6 text-center text-sm text-soot/60">No episodes recorded for this patient.</p></Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {eps.map((e) => {
               const st = deriveStage(e.data);
               const c = completeness(e.data, req);
@@ -212,7 +212,7 @@ export default function PatientDetailPage() {
 
       <Modal open={editing} onClose={() => setEditing(false)} title="Edit demography">
         {form && (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="label">Full name</label>
               <input className="input" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />

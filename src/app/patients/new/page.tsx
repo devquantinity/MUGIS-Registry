@@ -74,7 +74,7 @@ export default function NewPatientPage() {
         subtitle="Step 1 of 12 — Demography. The clinical groups follow, one step at a time."
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* -------- form -------- */}
         <form onSubmit={submit} className="lg:col-span-2">
           <Card>
@@ -82,7 +82,7 @@ export default function NewPatientPage() {
               <SectionTitle>Demography</SectionTitle>
               <span className="text-[11px] tabular-nums text-soot/60">{filled}/6 core fields</span>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="label">Full name</label>
                 <input className="input" value={form.fullName} onChange={(e) => set("fullName")(e.target.value)}

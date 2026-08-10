@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CENTRES, findCentre } from "@/lib/centres";
 import { seedUsers } from "@/lib/seed";
 import { useStore } from "@/lib/store";
@@ -114,32 +114,128 @@ function VisualPanel() {
   );
 }
 
+/* ---- 6-digit code input — shadcn InputOTP look, no dependency -------- */
+function OtpInput({ code, onCode, disabled, onComplete }: {
+  code: string[];
+  onCode: (next: string[]) => void;
+  disabled?: boolean;
+  onComplete: () => void;
+}) {
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => { refs.current[0]?.focus(); }, []);
+
+  function commit(next: string[], focusIdx: number | null) {
+    onCode(next);
+    if (focusIdx !== null) refs.current[Math.max(0, Math.min(5, focusIdx))]?.focus();
+    if (next.every((d) => d !== "")) onComplete();
+  }
+
+  function setDigit(i: number, raw: string) {
+    const d = raw.replace(/\D/g, "").slice(-1);
+    const next = [...code];
+    next[i] = d;
+    commit(next, d && i < 5 ? i + 1 : null);
+  }
+
+  function onKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !code[i] && i > 0) {
+      e.preventDefault();
+      const next = [...code];
+      next[i - 1] = "";
+      commit(next, i - 1);
+    } else if (e.key === "ArrowLeft" && i > 0) {
+      e.preventDefault();
+      refs.current[i - 1]?.focus();
+    } else if (e.key === "ArrowRight" && i < 5) {
+      e.preventDefault();
+      refs.current[i + 1]?.focus();
+    }
+  }
+
+  function onPaste(e: React.ClipboardEvent) {
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!digits) return;
+    e.preventDefault();
+    const next = Array.from({ length: 6 }, (_, i) => digits[i] ?? "");
+    commit(next, Math.min(digits.length, 5));
+  }
+
+  const box = (i: number) => (
+    <input
+      key={i}
+      ref={(el) => { refs.current[i] = el; }}
+      value={code[i]}
+      onChange={(e) => setDigit(i, e.target.value)}
+      onKeyDown={(e) => onKey(i, e)}
+      onPaste={onPaste}
+      onFocus={(e) => e.target.select()}
+      disabled={disabled}
+      inputMode="numeric"
+      autoComplete={i === 0 ? "one-time-code" : "off"}
+      aria-label={`Digit ${i + 1}`}
+      className="h-12 w-11 rounded-[10px] border border-ink/10 bg-white/80 text-center text-lg font-semibold tabular-nums text-ink transition-colors focus:border-forest-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-500/15 disabled:opacity-50 dark:bg-white/[0.06] dark:focus:bg-white/[0.09]"
+    />
+  );
+
+  return (
+    <div className="flex items-center gap-2">
+      {[0, 1, 2].map(box)}
+      <span aria-hidden className="w-2 text-center text-soot/40">–</span>
+      {[3, 4, 5].map(box)}
+    </div>
+  );
+}
+
 /* ---- the sign-in screen ---------------------------------------------- */
 /**
  * DEMO MODE — no credentials.
- * One click signs you in. Pick a centre and role first to preview how the
- * registry looks for that user. Real auth (password + TOTP + httpOnly
- * cookie) replaces this before go-live.
+ * Pick a centre and role, continue, then a simulated authenticator step
+ * accepts any 6-digit code. Real auth (password + TOTP + httpOnly cookie)
+ * replaces this before go-live.
  */
 export default function LoginScreen() {
   const { signIn } = useSession();
   const [centreId, setCentreId] = useState(CENTRES[0].id);
   const [role, setRole] = useState<Role>("clinician");
+  const [step, setStep] = useState<"account" | "code">("account");
+  const [code, setCode] = useState<string[]>(() => Array.from({ length: 6 }, () => ""));
+  const [verifying, setVerifying] = useState(false);
+  const timer = useRef<number | null>(null);
+
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
   const centre = findCentre(centreId);
+  // The seeded user this session signs in as, so a Clinician lands on their
+  // own populated caseload rather than an empty registry.
+  const seeded = seedUsers().find((u) => u.centreId === centreId && u.role === role)
+    ?? seedUsers().find((u) => u.role === role);
+  const email = seeded?.email ?? `demo.${role}@${centre.code.toLowerCase()}.mugis.org.my`;
 
   function enter(e: React.FormEvent) {
     e.preventDefault();
-    // Sign in AS the seeded user for this centre and role, so a Clinician
-    // lands on their own populated caseload rather than an empty registry.
-    const seeded = seedUsers().find((u) => u.centreId === centreId && u.role === role)
-      ?? seedUsers().find((u) => u.role === role);
-    signIn({
-      email: seeded?.email ?? `demo.${role}@${centre.code.toLowerCase()}.mugis.org.my`,
-      name: seeded?.name ?? ROLE_LABELS[role],
-      role,
-      centreId,
-    });
+    if (step === "account") {
+      setStep("code");
+      return;
+    }
+    if (code.every((d) => d !== "")) verify();
+  }
+
+  // Demo TOTP — any 6-digit code passes. Live deployment verifies against
+  // the user's enrolled authenticator before issuing a session.
+  function verify() {
+    if (verifying) return;
+    setVerifying(true);
+    timer.current = window.setTimeout(() => {
+      signIn({ email, name: seeded?.name ?? ROLE_LABELS[role], role, centreId });
+    }, 650);
+  }
+
+  function back() {
+    if (timer.current) window.clearTimeout(timer.current);
+    setStep("account");
+    setCode(Array.from({ length: 6 }, () => ""));
+    setVerifying(false);
   }
 
   return (
@@ -164,57 +260,119 @@ export default function LoginScreen() {
 
         <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-8 sm:px-10">
           <form onSubmit={enter} className="mg-fade-up w-full max-w-md">
-            <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
-              Welcome
-            </h1>
-            <p className="mt-1 text-sm text-soot/70">
-              Upper GI Cancer Registry. Choose a centre and role, then continue.
-            </p>
+            {step === "account" ? (
+              <div key="account" className="mg-pop">
+                <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+                  Welcome
+                </h1>
+                <p className="mt-1 text-sm text-soot/70">
+                  Upper GI Cancer Registry. Choose a centre and role, then continue.
+                </p>
 
-            <div className="mt-6">
-              <label htmlFor="centre" className="label">Centre</label>
-              <select
-                id="centre"
-                className="input"
-                value={centreId}
-                onChange={(e) => setCentreId(e.target.value)}
-              >
-                {CENTRES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div className="mt-6">
+                  <label htmlFor="centre" className="label">Centre</label>
+                  <select
+                    id="centre"
+                    className="input"
+                    value={centreId}
+                    onChange={(e) => setCentreId(e.target.value)}
+                  >
+                    {CENTRES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="mt-4">
-              <label htmlFor="role" className="label">Role</label>
-              <select
-                id="role"
-                className="input"
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-              >
-                {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-                  <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-[11px] text-soot/55">
-                You sign in as the demo user holding that role, with their existing
-                caseload — a Clinician sees only their own entries, a Head of
-                Service sees every centre.
-              </p>
-            </div>
+                <div className="mt-4">
+                  <label htmlFor="role" className="label">Role</label>
+                  <select
+                    id="role"
+                    className="input"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as Role)}
+                  >
+                    {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+                      <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1.5 text-[11px] text-soot/55">
+                    You sign in as the demo user holding that role, with their existing
+                    caseload — a Clinician sees only their own entries, a Head of
+                    Service sees every centre.
+                  </p>
+                </div>
 
-            <button type="submit" className="btn-primary mt-6 w-full !py-2.5">
-              Continue
-              <span aria-hidden>→</span>
-            </button>
+                <button type="submit" className="btn-primary mt-6 w-full !py-2.5">
+                  Continue
+                  <span aria-hidden>→</span>
+                </button>
 
-            <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[11px] leading-relaxed text-goldink/70">
-              Demo mode — no password required. Live deployment uses
-              admin-invited accounts with two-factor authentication.
-            </p>
+                <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[11px] leading-relaxed text-goldink/70">
+                  Demo mode — no password needed, and any 6-digit code passes the
+                  verification step. Live deployment uses admin-invited accounts
+                  with authenticator-app 2FA.
+                </p>
+              </div>
+            ) : (
+              <div key="code" className="mg-pop">
+                <button
+                  type="button"
+                  onClick={back}
+                  className="mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-soot/60 transition-colors hover:text-ink"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
+                  </svg>
+                  Use a different account
+                </button>
+
+                <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+                  Two-step verification
+                </h1>
+                <p className="mt-1 text-sm text-soot/70">
+                  Enter the 6-digit code from your authenticator app.
+                </p>
+
+                <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-ink/[0.06] bg-white/60 py-1 pl-1 pr-3 dark:bg-white/[0.06]">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-forest-500 text-[10px] font-bold text-white">
+                    {(seeded?.name ?? ROLE_LABELS[role]).slice(0, 1)}
+                  </span>
+                  <span className="truncate text-[12px] text-soot">{email}</span>
+                  <span className="shrink-0 text-[11px] text-soot/45">· {ROLE_LABELS[role]}</span>
+                </div>
+
+                <div className="mt-6">
+                  <OtpInput code={code} onCode={setCode} disabled={verifying} onComplete={verify} />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={verifying || code.some((d) => d === "")}
+                  className="btn-primary mt-6 w-full !py-2.5"
+                >
+                  {verifying ? (
+                    <>
+                      <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      Verifying…
+                    </>
+                  ) : (
+                    <>
+                      Verify &amp; sign in
+                      <span aria-hidden>→</span>
+                    </>
+                  )}
+                </button>
+
+                <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[11px] leading-relaxed text-goldink/70">
+                  Demo mode — any 6-digit code is accepted. Lost your device?
+                  Contact your registry administrator.
+                </p>
+              </div>
+            )}
           </form>
         </div>
 

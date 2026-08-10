@@ -77,7 +77,7 @@ export default function AuditPage() {
         actions={<button onClick={exportAudit} className="btn-secondary">Export log</button>}
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Total entries" value={counts.total} tone="info" />
         <Stat label="Modifications" value={counts.edits} tone="info" />
         <Stat label="Exports" value={counts.exports} sub="review periodically" tone="gold" />
@@ -85,7 +85,7 @@ export default function AuditPage() {
       </div>
 
       <Card className="mb-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="label">Search</label>
             <input className="input" placeholder="Record or user" value={q}

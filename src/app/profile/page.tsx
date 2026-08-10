@@ -36,7 +36,7 @@ export default function ProfilePage() {
     <div className="mx-auto w-full max-w-[1000px]">
       <PageHeader title="Profile" subtitle="Your account, access scope and recent activity." />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="flex items-center gap-4">
             <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-forest-500 text-xl font-bold text-white">

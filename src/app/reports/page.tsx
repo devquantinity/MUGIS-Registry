@@ -151,20 +151,20 @@ export default function ReportsPage() {
       />
 
       <SectionTitle>Operative audit</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Resections" value={m.resected} sub={`${pctOf(m.resected, eps.length)} of episodes`} tone="ok" />
         <Stat label="R0 resection rate" value={pctOf(m.r0, m.resected)} sub={`${m.r0} of ${m.resected}`} tone="ok" />
         <Stat label="Adequate nodal yield" value={pctOf(m.adequateNodes, m.resected)} sub="≥16 nodes harvested" tone={m.adequateNodes / Math.max(1, m.resected) > 0.6 ? "ok" : "warn"} />
         <Stat label="30-day mortality" value={pctOf(m.mortality30, m.resected)} sub={`${m.mortality30} Clavien-Dindo V`} tone={m.mortality30 === 0 ? "ok" : "bad"} />
       </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Minimally invasive" value={pctOf(m.mis, m.resected)} sub={`${m.mis} lap or robotic`} tone="info" />
         <Stat label="Major complications" value={pctOf(m.majorComp, m.resected)} sub="Clavien-Dindo ≥ IIIA" tone={m.majorComp / Math.max(1, m.resected) < 0.15 ? "ok" : "warn"} />
         <Stat label="Mean operating time" value={`${m.avgOp} min`} tone="muted" />
         <Stat label="Mean blood loss" value={`${m.avgEbl} ml`} tone="muted" />
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <SectionTitle>Stage at diagnosis</SectionTitle>
           {stageData.length ? (
@@ -182,7 +182,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card>
           <SectionTitle>Comorbidity burden</SectionTitle>
           <DonutChart data={cciBands} unit="patients" size={148} palette={[CHART.status.ok, CHART.status.warn, CHART.status.bad]} />
@@ -199,7 +199,7 @@ export default function ReportsPage() {
 
       <div className="mt-5">
         <SectionTitle>Outcome</SectionTitle>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Neoadjuvant given" value={pctOf(m.neoadj, eps.length)} sub={`${m.neoadj} episodes`} tone="info" />
           <Stat label="Recurrence recorded" value={m.recur} sub={pctOf(m.recur, eps.length)} tone="warn" />
           <Stat label="Deaths" value={m.deaths} sub={pctOf(m.deaths, eps.length)} tone="bad" />

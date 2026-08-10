@@ -6,7 +6,7 @@ import { allFields } from "@/lib/parameters";
 import type { AuditEntry, Episode, EpisodeData, Patient, RegistryUser } from "@/lib/types";
 import type { Session } from "@/lib/session";
 
-const KEY = "mugis.registry.v3";
+const KEY = "mugis.registry.v4";
 
 export type State = {
   patients: Patient[];

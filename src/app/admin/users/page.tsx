@@ -63,7 +63,7 @@ export default function AdminUsersPage() {
         actions={<button onClick={() => setInvite(true)} className="btn-primary">Invite user</button>}
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Total accounts" value={counts.total} tone="info" />
         <Stat label="Active" value={counts.active} tone="ok" />
         <Stat label="Without 2FA" value={counts.no2fa} sub="should be zero" tone={counts.no2fa ? "bad" : "ok"} />
@@ -71,7 +71,7 @@ export default function AdminUsersPage() {
       </div>
 
       <Card className="mb-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="sm:col-span-2">
             <label className="label">Search</label>
             <input className="input" placeholder="Name or email" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -127,7 +127,7 @@ export default function AdminUsersPage() {
             <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Dr Nur Aisyah" /></div>
           <div><label className="label">Email</label>
             <input className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@hospital.gov.my" /></div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><label className="label">Role</label>
               <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
                 {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}

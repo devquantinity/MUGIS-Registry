@@ -52,12 +52,12 @@ const ETHNIC_MIX = [
 ];
 
 const STATE_BY_CENTRE: Record<string, string[]> = {
-  hkl: ["WP Kuala Lumpur", "Selangor", "Negeri Sembilan"],
-  hs: ["Selangor", "WP Kuala Lumpur", "Perak"],
-  hussm: ["Kelantan", "Terengganu", "Pahang"],
   hpp: ["Pulau Pinang", "Kedah", "Perlis"],
-  hqe: ["Sabah", "WP Labuan"],
+  ikn: ["WP Putrajaya", "WP Kuala Lumpur", "Selangor"],
+  hsa: ["Johor", "Melaka", "Negeri Sembilan"],
+  hsnzkt: ["Terengganu", "Kelantan", "Pahang"],
   hus: ["Sarawak"],
+  qeh1: ["Sabah", "WP Labuan"],
 };
 
 function mykadFor(dob: string, sex: "Male" | "Female", state: string): string {
@@ -77,27 +77,27 @@ function mykadFor(dob: string, sex: "Male" | "Female", state: string): string {
 /* ---------------- users ---------------- */
 
 const USER_SEEDS: { name: string; role: Role; centreId: string; twoFactor: boolean; status: RegistryUser["status"] }[] = [
-  { name: "Dr Sharifah Nadia", role: "admin", centreId: "hkl", twoFactor: true, status: "active" },
-  { name: "Prof Dr Lim Boon Hock", role: "head", centreId: "hkl", twoFactor: true, status: "active" },
-  { name: "Dr Zulhilmi Abdul Karim", role: "hod", centreId: "hkl", twoFactor: true, status: "active" },
-  { name: "Dr Nurul Izzati", role: "clinician", centreId: "hkl", twoFactor: true, status: "active" },
-  { name: "Dr Marcus Tan", role: "clinician", centreId: "hkl", twoFactor: false, status: "active" },
-  { name: "Dr Farah Diana", role: "trainee", centreId: "hkl", twoFactor: true, status: "active" },
-  { name: "Dr Hafiz Roslan", role: "clinician", centreId: "hkl", twoFactor: true, status: "active" },
-  { name: "Dr Susan Ong", role: "trainee", centreId: "hkl", twoFactor: true, status: "active" },
-  { name: "Dr Ganesh Raman", role: "hod", centreId: "hs", twoFactor: true, status: "active" },
-  { name: "Dr Aina Sofea", role: "clinician", centreId: "hs", twoFactor: true, status: "active" },
-  { name: "Dr Wong Kar Wai", role: "trainee", centreId: "hs", twoFactor: false, status: "invited" },
-  { name: "Dr Vijay Anand", role: "clinician", centreId: "hs", twoFactor: true, status: "active" },
-  { name: "Dr Mohd Syafiq", role: "hod", centreId: "hussm", twoFactor: true, status: "active" },
-  { name: "Dr Nabilah Roslan", role: "clinician", centreId: "hussm", twoFactor: true, status: "active" },
-  { name: "Dr Cheah Ming Yang", role: "hod", centreId: "hpp", twoFactor: true, status: "active" },
-  { name: "Dr Priya Subramaniam", role: "clinician", centreId: "hpp", twoFactor: true, status: "active" },
-  { name: "Dr Jeffrey Anak Lasah", role: "hod", centreId: "hqe", twoFactor: true, status: "active" },
-  { name: "Dr Norliza Awang", role: "clinician", centreId: "hqe", twoFactor: false, status: "suspended" },
+  { name: "Dr Sharifah Nadia", role: "admin", centreId: "hpp", twoFactor: true, status: "active" },
+  { name: "Prof Dr Lim Boon Hock", role: "head", centreId: "hpp", twoFactor: true, status: "active" },
+  { name: "Dr Zulhilmi Abdul Karim", role: "hod", centreId: "hpp", twoFactor: true, status: "active" },
+  { name: "Dr Nurul Izzati", role: "clinician", centreId: "hpp", twoFactor: true, status: "active" },
+  { name: "Dr Marcus Tan", role: "clinician", centreId: "hpp", twoFactor: false, status: "active" },
+  { name: "Dr Farah Diana", role: "trainee", centreId: "hpp", twoFactor: true, status: "active" },
+  { name: "Dr Hafiz Roslan", role: "clinician", centreId: "hpp", twoFactor: true, status: "active" },
+  { name: "Dr Susan Ong", role: "trainee", centreId: "hpp", twoFactor: true, status: "active" },
+  { name: "Dr Ganesh Raman", role: "hod", centreId: "ikn", twoFactor: true, status: "active" },
+  { name: "Dr Aina Sofea", role: "clinician", centreId: "ikn", twoFactor: true, status: "active" },
+  { name: "Dr Wong Kar Wai", role: "trainee", centreId: "ikn", twoFactor: false, status: "invited" },
+  { name: "Dr Vijay Anand", role: "clinician", centreId: "ikn", twoFactor: true, status: "active" },
+  { name: "Dr Mohd Syafiq", role: "hod", centreId: "hsnzkt", twoFactor: true, status: "active" },
+  { name: "Dr Nabilah Roslan", role: "clinician", centreId: "hsnzkt", twoFactor: true, status: "active" },
+  { name: "Dr Cheah Ming Yang", role: "hod", centreId: "hsa", twoFactor: true, status: "active" },
+  { name: "Dr Priya Subramaniam", role: "clinician", centreId: "hsa", twoFactor: true, status: "active" },
+  { name: "Dr Jeffrey Anak Lasah", role: "hod", centreId: "qeh1", twoFactor: true, status: "active" },
+  { name: "Dr Norliza Awang", role: "clinician", centreId: "qeh1", twoFactor: false, status: "suspended" },
   { name: "Dr Bong Chin Hui", role: "hod", centreId: "hus", twoFactor: true, status: "active" },
   { name: "Dr Amirah Zainuddin", role: "clinician", centreId: "hus", twoFactor: true, status: "active" },
-  { name: "Dr Research Fellow", role: "researcher", centreId: "hkl", twoFactor: true, status: "active" },
+  { name: "Dr Research Fellow", role: "researcher", centreId: "hpp", twoFactor: true, status: "active" },
 ];
 
 function emailFor(name: string, centreId: string) {
@@ -279,7 +279,7 @@ export function buildSeed() {
   for (const centre of CENTRES) {
     const centreUsers = enterers.filter((u) => u.centreId === centre.id);
     if (centreUsers.length === 0) continue;
-    const count = centre.id === "hkl" ? 90 : centre.id === "hs" ? 60 : int(30, 40);
+    const count = centre.id === "hpp" ? 90 : centre.id === "ikn" ? 60 : int(30, 40);
 
     for (let i = 0; i < count; i++) {
       const sex: "Male" | "Female" = chance(0.63) ? "Male" : "Female";
