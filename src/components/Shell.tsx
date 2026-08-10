@@ -8,6 +8,7 @@ import LoginScreen from "@/components/LoginScreen";
 import { CommandPalette } from "@/components/CommandPalette";
 import { findCentre } from "@/lib/centres";
 import { ROLE_LABELS, SessionProvider, useSession, type Role } from "@/lib/session";
+import { seedUsers } from "@/lib/seed";
 import { StoreProvider, useStore } from "@/lib/store";
 import { useScoped } from "@/lib/useScoped";
 import { scopeLabel } from "@/lib/access";
@@ -653,6 +654,70 @@ const SHORTCUTS: [string, string][] = [
   ["Tab", "Move between fields; first Tab reveals Skip to content"],
 ];
 
+/** Demo role switcher — re-signs-in as the seeded user holding that role
+ *  (same centre where possible) so record scoping changes live. */
+function RoleSwitcher() {
+  const { session, signIn } = useSession();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  if (!session) return null;
+
+  function pick(role: Role) {
+    if (!session || role === session.role) { setOpen(false); return; }
+    const u = seedUsers().find((x) => x.role === role && x.centreId === session.centreId)
+      ?? seedUsers().find((x) => x.role === role);
+    if (u) signIn({ email: u.email, name: u.name, role: u.role, centreId: u.centreId });
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title="Viewing as — switch role"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex h-8 items-center gap-1.5 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] px-2.5 text-[12px] font-semibold text-ink shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12]"
+      >
+        <span className="text-forest-500">{ic(ICONS.users, 13)}</span>
+        {ROLE_LABELS[session.role]}
+        <span className="text-soot/45">{ic(ICONS.chevron, 12)}</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[250px] overflow-hidden rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 p-1 shadow-raised backdrop-blur-xl">
+          <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold text-soot/45">View the registry as</p>
+          {(Object.keys(ROLE_LABELS) as Role[]).map((r) => {
+            const active = r === session.role;
+            return (
+              <button
+                key={r}
+                onClick={() => pick(r)}
+                className={
+                  "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] transition-colors " +
+                  (active ? "bg-forest-50 font-semibold text-forest-600" : "text-ink hover:bg-ink/[0.04]")
+                }
+              >
+                {ROLE_LABELS[r]}
+                <span className="shrink-0 text-[10.5px] text-soot/45">{scopeLabel(r)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Topbar({ onSearch }: { onSearch: () => void }) {
   const { session } = useSession();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -688,6 +753,8 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
         </button>
 
         <span className="h-4 w-px bg-ink/[0.08]" />
+
+        <RoleSwitcher />
 
         <ActivityBell />
 

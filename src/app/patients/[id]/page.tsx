@@ -12,7 +12,7 @@ import { findCentre } from "@/lib/centres";
 import { ETHNIC, STATES, requiredFieldIds } from "@/lib/parameters";
 import { cancerLabel } from "@/lib/types";
 import { completeness, deriveStage, cciScore, stageTone } from "@/lib/staging";
-import { ageFrom, fmtDate, fmtDateTime, maskMykad } from "@/lib/format";
+import { ageFrom, fmtDate, fmtDateTime, formatMykad, maskMykad } from "@/lib/format";
 import { Badge, Card, EmptyState, Modal, PageHeader, Progress, SectionTitle, Table, Td, Th, Toast } from "@/components/ui";
 import { DatePicker } from "@/components/DatePicker";
 
@@ -219,7 +219,7 @@ export default function PatientDetailPage() {
             </div>
             <div>
               <label className="label">MyKad</label>
-              <input className="input font-mono" value={form.mykad} onChange={(e) => setForm({ ...form, mykad: e.target.value })} />
+              <input className="input font-mono" value={form.mykad} onChange={(e) => setForm({ ...form, mykad: formatMykad(e.target.value) })} inputMode="numeric" />
             </div>
             <div>
               <label className="label">Passport</label>

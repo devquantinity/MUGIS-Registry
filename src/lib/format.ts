@@ -99,6 +99,38 @@ export function initials(name: string): string {
 }
 
 /** "79y · Male", "79y", "Male", or "" — never "nully" when demography is blank. */
+/** "88021475231" → "880214-07-5231": digits only, dashes inserted, 12-digit cap. */
+export function formatMykad(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 12);
+  if (d.length <= 6) return d;
+  if (d.length <= 8) return `${d.slice(0, 6)}-${d.slice(6)}`;
+  return `${d.slice(0, 6)}-${d.slice(6, 8)}-${d.slice(8)}`;
+}
+
+/**
+ * Identity encoded in a MyKad number: YYMMDD birth date (century inferred,
+ * never in the future) and sex from the last digit (odd = male).
+ */
+export function mykadIdentity(raw: string): { dob: string | null; sex: "Male" | "Female" | null } {
+  const d = raw.replace(/\D/g, "");
+  let dob: string | null = null;
+  if (d.length >= 6) {
+    const yy = Number(d.slice(0, 2));
+    const mm = Number(d.slice(2, 4));
+    const dd = Number(d.slice(4, 6));
+    const today = new Date();
+    const year = yy <= today.getFullYear() % 100 ? 2000 + yy : 1900 + yy;
+    const date = new Date(Date.UTC(year, mm - 1, dd));
+    const real = mm >= 1 && mm <= 12 && date.getUTCMonth() === mm - 1 && date.getUTCDate() === dd;
+    if (real) {
+      const iso = date.toISOString().slice(0, 10);
+      if (iso <= today.toISOString().slice(0, 10)) dob = iso;
+    }
+  }
+  const sex = d.length === 12 ? (Number(d[11]) % 2 === 1 ? ("Male" as const) : ("Female" as const)) : null;
+  return { dob, sex };
+}
+
 export function ageSex(dob: string, sex: string): string {
   const a = ageFrom(dob);
   const parts: string[] = [];

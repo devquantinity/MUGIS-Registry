@@ -8,7 +8,7 @@ import { useSession } from "@/lib/session";
 import { canCreate } from "@/lib/access";
 import { CENTRES, findCentre } from "@/lib/centres";
 import { ETHNIC, STATES, schemaFor } from "@/lib/parameters";
-import { hashId, ageFrom } from "@/lib/format";
+import { hashId, ageFrom, formatMykad, mykadIdentity } from "@/lib/format";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui";
 import { DatePicker } from "@/components/DatePicker";
 
@@ -26,6 +26,15 @@ export default function NewPatientPage() {
   const [error, setError] = useState("");
 
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // MyKad drives identity: dashes insert themselves, and once the number is
+  // plausible the date of birth (first six digits) and sex (last digit) fill
+  // in automatically — both stay editable.
+  function onMykad(raw: string) {
+    const mykad = formatMykad(raw);
+    const { dob, sex } = mykadIdentity(mykad);
+    setForm((f) => ({ ...f, mykad, dob: dob ?? f.dob, sex: sex ?? f.sex }));
+  }
 
   const duplicate = useMemo(() => {
     const k = form.mykad.trim();
@@ -90,8 +99,9 @@ export default function NewPatientPage() {
               </div>
               <div>
                 <label className="label">MyKad No</label>
-                <input className="input font-mono" value={form.mykad} onChange={(e) => set("mykad")(e.target.value)}
-                  placeholder="000000-00-0000" />
+                <input className="input font-mono" value={form.mykad} onChange={(e) => onMykad(e.target.value)}
+                  inputMode="numeric" placeholder="000000-00-0000" />
+                <p className="mt-1 text-[11px] text-soot/55">Dashes, date of birth and sex fill in automatically.</p>
               </div>
               <div>
                 <label className="label">Passport No</label>

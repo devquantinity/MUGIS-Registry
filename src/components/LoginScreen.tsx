@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { CENTRES, findCentre } from "@/lib/centres";
+import { CENTRES } from "@/lib/centres";
 import { seedUsers } from "@/lib/seed";
 import { useStore } from "@/lib/store";
-import { ROLE_LABELS, useSession, type Role } from "@/lib/session";
+import { ROLE_LABELS, useSession } from "@/lib/session";
 
 /* ---- inline icons ---------------------------------------------------- */
 const Shield = ({ className = "" }: { className?: string }) => (
@@ -187,17 +187,27 @@ function OtpInput({ code, onCode, disabled, onComplete }: {
   );
 }
 
+/** The centre's demo clinician — the account the email field prefills with. */
+function defaultAccount(centreId: string) {
+  const users = seedUsers();
+  return users.find((u) => u.centreId === centreId && u.role === "clinician")
+    ?? users.find((u) => u.role === "clinician")
+    ?? users[0];
+}
+
 /* ---- the sign-in screen ---------------------------------------------- */
 /**
- * DEMO MODE — no credentials.
- * Pick a centre and role, continue, then a simulated authenticator step
- * accepts any 6-digit code. Real auth (password + TOTP + httpOnly cookie)
- * replaces this before go-live.
+ * DEMO MODE — simulated credentials.
+ * Email is prefilled with the centre's demo account, any password passes,
+ * and the authenticator step accepts any 6-digit code. Real auth
+ * (password + TOTP + httpOnly cookie) replaces this before go-live.
  */
 export default function LoginScreen() {
   const { signIn } = useSession();
   const [centreId, setCentreId] = useState(CENTRES[0].id);
-  const [role, setRole] = useState<Role>("clinician");
+  const [email, setEmail] = useState(() => defaultAccount(CENTRES[0].id).email);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [password, setPassword] = useState("");
   const [step, setStep] = useState<"account" | "code">("account");
   const [code, setCode] = useState<string[]>(() => Array.from({ length: 6 }, () => ""));
   const [verifying, setVerifying] = useState(false);
@@ -205,29 +215,35 @@ export default function LoginScreen() {
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
-  const centre = findCentre(centreId);
-  // The seeded user this session signs in as, so a Clinician lands on their
-  // own populated caseload rather than an empty registry.
-  const seeded = seedUsers().find((u) => u.centreId === centreId && u.role === role)
-    ?? seedUsers().find((u) => u.role === role);
-  const email = seeded?.email ?? `demo.${role}@${centre.code.toLowerCase()}.mugis.org.my`;
+  // The account this session signs in as — the typed email when it matches a
+  // seeded user, otherwise the centre's demo clinician (so the first screen
+  // is never an empty registry). Roles are switched later, from the header.
+  const match = seedUsers().find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+  const target = match ?? defaultAccount(centreId);
+
+  function onCentre(id: string) {
+    setCentreId(id);
+    if (!emailTouched) setEmail(defaultAccount(id).email);
+  }
 
   function enter(e: React.FormEvent) {
     e.preventDefault();
     if (step === "account") {
+      if (!email.trim() || !password) return;
       setStep("code");
       return;
     }
     if (code.every((d) => d !== "")) verify();
   }
 
-  // Demo TOTP — any 6-digit code passes. Live deployment verifies against
-  // the user's enrolled authenticator before issuing a session.
+  // Demo auth — any password and any 6-digit code pass. Live deployment
+  // verifies credentials and the enrolled authenticator before issuing
+  // a session.
   function verify() {
     if (verifying) return;
     setVerifying(true);
     timer.current = window.setTimeout(() => {
-      signIn({ email, name: seeded?.name ?? ROLE_LABELS[role], role, centreId });
+      signIn({ email: target.email, name: target.name, role: target.role, centreId: target.centreId });
     }, 650);
   }
 
@@ -266,7 +282,7 @@ export default function LoginScreen() {
                   Welcome
                 </h1>
                 <p className="mt-1 text-sm text-soot/70">
-                  Upper GI Cancer Registry. Choose a centre and role, then continue.
+                  Upper GI Cancer Registry. Sign in to your centre workspace.
                 </p>
 
                 <div className="mt-6">
@@ -275,7 +291,7 @@ export default function LoginScreen() {
                     id="centre"
                     className="input"
                     value={centreId}
-                    onChange={(e) => setCentreId(e.target.value)}
+                    onChange={(e) => onCentre(e.target.value)}
                   >
                     {CENTRES.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -286,33 +302,49 @@ export default function LoginScreen() {
                 </div>
 
                 <div className="mt-4">
-                  <label htmlFor="role" className="label">Role</label>
-                  <select
-                    id="role"
+                  <label htmlFor="email" className="label">Email</label>
+                  <input
+                    id="email"
+                    type="email"
                     className="input"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as Role)}
-                  >
-                    {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-                      <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                    ))}
-                  </select>
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setEmailTouched(true); }}
+                    autoComplete="email"
+                    spellCheck={false}
+                    placeholder="you@centre.mugis.org.my"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label htmlFor="password" className="label">Password</label>
+                  <input
+                    id="password"
+                    type="password"
+                    className="input"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                  />
                   <p className="mt-1.5 text-[11px] text-soot/55">
-                    You sign in as the demo user holding that role, with their existing
-                    caseload — a Clinician sees only their own entries, a Head of
-                    Service sees every centre.
+                    Prefilled with your centre&rsquo;s demo account — any password is
+                    accepted. Your role is switched from the header once inside.
                   </p>
                 </div>
 
-                <button type="submit" className="btn-primary mt-6 w-full !py-2.5">
+                <button
+                  type="submit"
+                  disabled={!email.trim() || !password}
+                  className="btn-primary mt-6 w-full !py-2.5"
+                >
                   Continue
                   <span aria-hidden>→</span>
                 </button>
 
                 <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[11px] leading-relaxed text-goldink/70">
-                  Demo mode — no password needed, and any 6-digit code passes the
-                  verification step. Live deployment uses admin-invited accounts
-                  with authenticator-app 2FA.
+                  Demo mode — any password and any 6-digit code are accepted.
+                  Live deployment uses admin-invited accounts with
+                  authenticator-app 2FA.
                 </p>
               </div>
             ) : (
@@ -337,10 +369,10 @@ export default function LoginScreen() {
 
                 <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-ink/[0.06] bg-white/60 py-1 pl-1 pr-3 dark:bg-white/[0.06]">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-forest-500 text-[10px] font-bold text-white">
-                    {(seeded?.name ?? ROLE_LABELS[role]).slice(0, 1)}
+                    {target.name.slice(0, 1)}
                   </span>
-                  <span className="truncate text-[12px] text-soot">{email}</span>
-                  <span className="shrink-0 text-[11px] text-soot/45">· {ROLE_LABELS[role]}</span>
+                  <span className="truncate text-[12px] text-soot">{target.email}</span>
+                  <span className="shrink-0 text-[11px] text-soot/45">· {ROLE_LABELS[target.role]}</span>
                 </div>
 
                 <div className="mt-6">
