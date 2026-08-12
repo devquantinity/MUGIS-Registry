@@ -69,8 +69,8 @@ export default function PatientDetailPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1250px]">
-      <Link href="/patients" className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-soot/60 hover:text-ink">
+    <div>
+      <Link href="/patients" className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-soot/75 hover:text-ink">
         ← All patients
       </Link>
 
@@ -106,7 +106,7 @@ export default function PatientDetailPage() {
               ["Centre", `${centre.name} (${centre.code})`],
             ].map(([k, v]) => (
               <div key={k}>
-                <dt className="text-[11px] font-semibold text-soot/55">{k}</dt>
+                <dt className="text-[13px] font-semibold text-soot/72">{k}</dt>
                 <dd className="mt-0.5 text-sm text-ink">{v}</dd>
               </div>
             ))}
@@ -117,19 +117,19 @@ export default function PatientDetailPage() {
           <SectionTitle>Record</SectionTitle>
           <dl className="space-y-3">
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Entered by</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Entered by</dt>
               <dd className="mt-0.5 text-sm text-ink">{patient.createdBy}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Created</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Created</dt>
               <dd className="mt-0.5 text-sm text-ink">{fmtDateTime(patient.createdAt)}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Last updated</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Last updated</dt>
               <dd className="mt-0.5 text-sm text-ink">{fmtDateTime(patient.updatedAt)}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Your access</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Your access</dt>
               <dd className="mt-1">
                 <Badge tone={mine ? "ok" : "muted"}>{mine ? "Read and write" : "Read only"}</Badge>
               </dd>
@@ -152,7 +152,7 @@ export default function PatientDetailPage() {
         </SectionTitle>
 
         {eps.length === 0 ? (
-          <Card><p className="py-6 text-center text-sm text-soot/60">No episodes recorded for this patient.</p></Card>
+          <Card><p className="py-6 text-center text-sm text-soot/75">No episodes recorded for this patient.</p></Card>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {eps.map((e) => {
@@ -164,7 +164,7 @@ export default function PatientDetailPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold text-ink">{cancerLabel(e.cancerType)}</p>
-                      <p className="mt-0.5 text-[11px] text-soot/60">
+                      <p className="mt-0.5 text-[13px] text-soot/75">
                         Dx {fmtDate(String(e.data.dateDiagnosis ?? ""))} · updated {fmtDate(e.updatedAt)}
                       </p>
                     </div>
@@ -176,7 +176,7 @@ export default function PatientDetailPage() {
                     {e.data.surgery && e.data.surgery !== "No Surgery" && <Badge tone="info">{String(e.data.surgery)}</Badge>}
                   </div>
                   <div className="mt-3">
-                    <div className="mb-1 flex justify-between text-[10px] text-soot/60">
+                    <div className="mb-1 flex justify-between text-[12px] text-soot/75">
                       <span>Completeness</span><span className="tabular-nums">{c.pct}%</span>
                     </div>
                     <Progress value={c.pct} tone={c.pct >= 80 ? "info" : c.pct >= 50 ? "warn" : "bad"} />
@@ -193,20 +193,20 @@ export default function PatientDetailPage() {
         <Table head={<tr><Th>When</Th><Th>Action</Th><Th>By</Th><Th>Detail</Th></tr>} minWidth={620}>
           {audit.map((a) => (
             <tr key={a.id}>
-              <Td><span className="text-xs tabular-nums text-soot/70">{fmtDateTime(a.at)}</span></Td>
+              <Td><span className="text-xs tabular-nums text-soot/80">{fmtDateTime(a.at)}</span></Td>
               <Td><Badge tone={a.action === "create" ? "ok" : a.action === "delete" ? "bad" : "info"}>{a.action}</Badge></Td>
               <Td><span className="text-xs text-soot">{a.userEmail}</span></Td>
               <Td>
                 <span className="text-xs text-ink">{a.entityLabel}</span>
                 {a.changes?.length ? (
-                  <span className="ml-1 text-[11px] text-soot/60">
+                  <span className="ml-1 text-[13px] text-soot/75">
                     ({a.changes.map((c) => `${c.field}: ${c.from} → ${c.to}`).join("; ")})
                   </span>
                 ) : null}
               </Td>
             </tr>
           ))}
-          {audit.length === 0 && <tr><Td><span className="text-sm text-soot/60">No entries.</span></Td></tr>}
+          {audit.length === 0 && <tr><Td><span className="text-sm text-soot/75">No entries.</span></Td></tr>}
         </Table>
       </div>
 

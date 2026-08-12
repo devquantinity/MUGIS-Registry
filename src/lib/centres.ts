@@ -15,7 +15,7 @@ export type Centre = {
 
 export const CENTRES: Centre[] = [
   { id: "hpp", code: "HPP", name: "Hospital Pulau Pinang", state: "Pulau Pinang" },
-  { id: "ikn", code: "IKN/IEP", name: "Institut Kanser Negara", state: "WP Putrajaya" },
+  { id: "ikn", code: "IKN/IEP", name: "Institut Kanser Negara / Institut Endokrin Putrajaya", state: "WP Putrajaya" },
   { id: "hsa", code: "HSA", name: "Hospital Sultanah Aminah", state: "Johor" },
   { id: "hsnzkt", code: "HSNZKT", name: "Hospital Sultanah Nur Zahirah", state: "Terengganu" },
   { id: "hus", code: "HUS", name: "Hospital Umum Sarawak", state: "Sarawak" },

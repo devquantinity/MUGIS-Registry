@@ -45,6 +45,19 @@ const config: Config = {
           700: "rgb(var(--color-danger-700) / <alpha-value>)",
         },
       },
+      // Type scale nudged up ~1px at the small end, where this app lives.
+      // Line heights grow with it so dense tables keep breathing room.
+      fontSize: {
+        xs: ["0.875rem", { lineHeight: "1.25rem" }],     // 14px (Tailwind default 12)
+        sm: ["1rem", { lineHeight: "1.5rem" }],          // 16px (default 14)
+        base: ["1.125rem", { lineHeight: "1.75rem" }],   // 18px (default 16)
+        lg: ["1.25rem", { lineHeight: "1.875rem" }],     // 20px (default 18)
+        xl: ["1.375rem", { lineHeight: "1.9375rem" }],   // 22px (default 20)
+        "2xl": ["1.75rem", { lineHeight: "2.25rem" }],   // 28px (default 24)
+        "3xl": ["2rem", { lineHeight: "2.375rem" }],     // 32px (was 30)
+        "4xl": ["2.375rem", { lineHeight: "2.625rem" }], // 38px (was 36)
+        "5xl": ["3.125rem", { lineHeight: "1" }],        // 50px (was 48)
+      },
       fontFamily: {
         sans: [
           "var(--font-inter)",

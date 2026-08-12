@@ -3,16 +3,17 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { buildSeed } from "@/lib/seed";
 import { allFields } from "@/lib/parameters";
-import type { AuditEntry, Episode, EpisodeData, Patient, RegistryUser } from "@/lib/types";
+import type { AuditEntry, Episode, EpisodeData, ExportRequest, Patient, RegistryUser } from "@/lib/types";
 import type { Session } from "@/lib/session";
 
-const KEY = "mugis.registry.v4";
+const KEY = "mugis.registry.v6";
 
 export type State = {
   patients: Patient[];
   episodes: Episode[];
   users: RegistryUser[];
   audit: AuditEntry[];
+  exportRequests: ExportRequest[];
 };
 
 type Ctx = {
@@ -27,6 +28,17 @@ type Ctx = {
   updateUser: (s: Session, id: string, patch: Partial<RegistryUser>) => void;
   addUser: (s: Session, u: Omit<RegistryUser, "id" | "lastActive">) => void;
   logAudit: (e: Omit<AuditEntry, "id" | "at">) => void;
+  /** Raise a request to release direct identifiers. Returns the reference. */
+  requestExport: (s: Session, r: {
+    purpose: string; basis: ExportRequest["basis"]; ethicsRef: string;
+    includesIdentifiers: boolean;
+    scopeCentreId: string; scopeRecords: number; scopeGroups: number;
+    format: string; retentionDays: number;
+  }) => ExportRequest;
+  /** Approve or refuse. Approval opens a 72-hour, single-use window. */
+  decideExport: (s: Session, id: string, approve: boolean, note: string) => void;
+  /** Burn the approval at the moment the file is produced. */
+  consumeExport: (s: Session, id: string, label: string) => void;
   resetDemo: () => void;
 };
 
@@ -38,7 +50,9 @@ function load(): State {
     const raw = window.localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as State;
-      if (parsed?.patients?.length) return parsed;
+      if (parsed?.patients?.length) {
+        return { ...parsed, exportRequests: parsed.exportRequests ?? [] };
+      }
     }
   } catch { /* fall through to seed */ }
   return buildSeed();
@@ -236,6 +250,83 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  /* ---------------- identifier-export approval ---------------- */
+
+  const requestExport: Ctx["requestExport"] = useCallback((sess, r) => {
+    const now = new Date().toISOString();
+    const id = `x${Date.now().toString(36)}${Math.floor(Math.random() * 1e3)}`;
+    // Reference is built from the request itself, not a counter, so two
+    // people filing at once cannot collide on the same number.
+    const ref = `EXP-${now.slice(0, 4)}-${id.slice(-4).toUpperCase()}`;
+    const created: ExportRequest = {
+      ...r, id, ref,
+      requestedBy: sess.email,
+      requestedByName: sess.name,
+      requestedRole: sess.role,
+      requestedAt: now,
+      status: "pending",
+    };
+    setState((s) => ({
+      ...s,
+      exportRequests: [created, ...s.exportRequests],
+      audit: [{
+        id: `a${Date.now().toString(36)}`, at: now, userEmail: sess.email,
+        userRole: sess.role, centreId: sess.centreId, action: "request",
+        entity: "system", entityId: id,
+        entityLabel: `${ref} — approval requested for ${r.scopeRecords} ${r.includesIdentifiers ? "identifiable" : "de-identified"} records`,
+      }, ...s.audit],
+    }));
+    return created;
+  }, []);
+
+  const decideExport: Ctx["decideExport"] = useCallback((sess, id, approve, note) => {
+    const now = new Date().toISOString();
+    setState((s) => {
+      const req = s.exportRequests.find((x) => x.id === id);
+      // Guard here as well as in the interface: never let anyone sign off
+      // their own request, and never re-decide one that is already settled.
+      if (!req || req.status !== "pending" || req.requestedBy === sess.email) return s;
+      const decided: ExportRequest = {
+        ...req,
+        status: approve ? "approved" : "rejected",
+        decidedBy: sess.email,
+        decidedByName: sess.name,
+        decidedAt: now,
+        decisionNote: note,
+        expiresAt: approve ? new Date(Date.now() + 72 * 3600 * 1000).toISOString() : undefined,
+      };
+      return {
+        ...s,
+        exportRequests: s.exportRequests.map((x) => (x.id === id ? decided : x)),
+        audit: [{
+          id: `a${Date.now().toString(36)}`, at: now, userEmail: sess.email,
+          userRole: sess.role, centreId: sess.centreId,
+          action: approve ? "approve" : "reject", entity: "system", entityId: id,
+          entityLabel: `${req.ref} — identifiable export ${approve ? "approved" : "refused"} for ${req.requestedByName}`,
+        }, ...s.audit],
+      };
+    });
+  }, []);
+
+  const consumeExport: Ctx["consumeExport"] = useCallback((sess, id, label) => {
+    const now = new Date().toISOString();
+    setState((s) => {
+      const req = s.exportRequests.find((x) => x.id === id);
+      if (!req || req.status !== "approved") return s;
+      return {
+        ...s,
+        exportRequests: s.exportRequests.map((x) =>
+          x.id === id ? { ...x, status: "used", usedAt: now } : x),
+        audit: [{
+          id: `a${Date.now().toString(36)}`, at: now, userEmail: sess.email,
+          userRole: sess.role, centreId: sess.centreId, action: "export",
+          entity: "system", entityId: id,
+          entityLabel: `${req.ref} — ${label} (released under approval by ${req.decidedByName})`,
+        }, ...s.audit],
+      };
+    });
+  }, []);
+
   const resetDemo = useCallback(() => {
     const fresh = buildSeed();
     setState(fresh);
@@ -244,9 +335,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<Ctx>(() => ({
     state, ready, addPatient, updatePatient, deletePatient, addEpisode,
-    updateEpisode, setEpisodeStatus, updateUser, addUser, logAudit, resetDemo,
+    updateEpisode, setEpisodeStatus, updateUser, addUser, logAudit,
+    requestExport, decideExport, consumeExport, resetDemo,
   }), [state, ready, addPatient, updatePatient, deletePatient, addEpisode,
-       updateEpisode, setEpisodeStatus, updateUser, addUser, logAudit, resetDemo]);
+       updateEpisode, setEpisodeStatus, updateUser, addUser, logAudit,
+       requestExport, decideExport, consumeExport, resetDemo]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

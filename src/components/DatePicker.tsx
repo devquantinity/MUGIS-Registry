@@ -102,8 +102,8 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
         className={"input flex items-center gap-2 text-left " +
           (disabled ? "cursor-not-allowed opacity-60" : "")}
       >
-        <span className="text-soot/45"><CalIcon /></span>
-        <span className={"flex-1 truncate " + (value ? "text-ink" : "text-soot/40")}>
+        <span className="text-soot/65"><CalIcon /></span>
+        <span className={"flex-1 truncate " + (value ? "text-ink" : "text-soot/60")}>
           {value ? fmtLabel(value) : placeholder}
         </span>
         {value && !disabled && (
@@ -111,7 +111,7 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
             role="button"
             aria-label="Clear date"
             onClick={(e) => { e.stopPropagation(); onChange(""); }}
-            className="rounded-full p-0.5 text-soot/40 hover:bg-cream hover:text-soot"
+            className="rounded-full p-0.5 text-soot/60 hover:bg-cream hover:text-soot"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -123,19 +123,19 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
         <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[278px] rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 p-3 shadow-raised backdrop-blur-xl">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" onClick={() => setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))}
-              className="rounded-lg p-1.5 text-soot/60 hover:bg-cream hover:text-ink" aria-label="Previous month">
+              className="rounded-lg p-1.5 text-soot/75 hover:bg-cream hover:text-ink" aria-label="Previous month">
               <Chevron left />
             </button>
-            <span className="text-[13px] font-semibold text-ink">{MONTHS[view.m]} {view.y}</span>
+            <span className="text-[15px] font-semibold text-ink">{MONTHS[view.m]} {view.y}</span>
             <button type="button" onClick={() => setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))}
-              className="rounded-lg p-1.5 text-soot/60 hover:bg-cream hover:text-ink" aria-label="Next month">
+              className="rounded-lg p-1.5 text-soot/75 hover:bg-cream hover:text-ink" aria-label="Next month">
               <Chevron />
             </button>
           </div>
 
           <div className="grid grid-cols-7 gap-y-0.5">
             {DOW.map((d) => (
-              <span key={d} className="flex h-7 items-center justify-center text-[10.5px] font-medium text-soot/45">{d}</span>
+              <span key={d} className="flex h-7 items-center justify-center text-[12.5px] font-medium text-soot/65">{d}</span>
             ))}
             {cells.map((c, i) => {
               const iso = toIso(c.y, c.m, c.d);
@@ -150,12 +150,12 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
                   disabled={off}
                   onClick={() => pick(iso)}
                   className={
-                    "mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-[12.5px] tabular-nums transition-colors " +
+                    "mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-[14.5px] tabular-nums transition-colors " +
                     (isSel
                       ? "bg-forest-500 font-semibold text-white"
                       : off
-                        ? "cursor-not-allowed text-soot/20"
-                        : (inMonth ? "text-ink" : "text-soot/30") +
+                        ? "cursor-not-allowed text-soot/40"
+                        : (inMonth ? "text-ink" : "text-soot/50") +
                           " hover:bg-ink/[0.05]" +
                           (isToday ? " font-bold text-forest-600 ring-1 ring-inset ring-forest-500/35" : ""))
                   }
@@ -168,7 +168,7 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
 
           <div className="mt-2 flex items-center justify-between border-t border-line pt-2">
             <button type="button" onClick={() => { onChange(""); setOpen(false); }}
-              className="rounded-lg px-2 py-1 text-xs text-soot/60 hover:bg-cream hover:text-ink">
+              className="rounded-lg px-2 py-1 text-xs text-soot/75 hover:bg-cream hover:text-ink">
               Clear
             </button>
             <button type="button"

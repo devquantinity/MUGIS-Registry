@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
+    <div>
       <PageHeader
         title="Users"
         subtitle="Accounts are created here. There is no self-registration."
@@ -99,13 +99,13 @@ export default function AdminUsersPage() {
                 onChange={(e) => { updateUser(session, u.id, { role: e.target.value as Role }); setToast(`${u.name} is now ${ROLE_LABELS[e.target.value as Role]}`); }}>
                 {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
               </select>
-              <span className="mt-1 block text-[10px] text-soot/55">{scopeLabel(u.role)}</span>
+              <span className="mt-1 block text-[12px] text-soot/72">{scopeLabel(u.role)}</span>
             </Td>
             <Td><Badge tone="muted">{findCentre(u.centreId).code}</Badge></Td>
             <Td align="center">
               <button
                 onClick={() => { updateUser(session, u.id, { twoFactor: !u.twoFactor }); setToast(`2FA ${u.twoFactor ? "disabled" : "enabled"} for ${u.name}`); }}
-                className={"rounded-full px-2 py-0.5 text-[11px] font-semibold " + (u.twoFactor ? "bg-sage-100 text-sage-700" : "bg-danger-50 text-danger-700")}>
+                className={"rounded-full px-2 py-0.5 text-[13px] font-semibold " + (u.twoFactor ? "bg-sage-100 text-sage-700" : "bg-danger-50 text-danger-700")}>
                 {u.twoFactor ? "On" : "Off"}
               </button>
             </Td>
@@ -115,10 +115,10 @@ export default function AdminUsersPage() {
                 <option value="active">Active</option><option value="invited">Invited</option><option value="suspended">Suspended</option>
               </select>
             </Td>
-            <Td align="right"><span className="text-xs text-soot/70" title={fmtDateTime(u.lastActive)}>{relTime(u.lastActive, NOW)}</span></Td>
+            <Td align="right"><span className="text-xs text-soot/80" title={fmtDateTime(u.lastActive)}>{relTime(u.lastActive, NOW)}</span></Td>
           </tr>
         ))}
-        {users.length === 0 && <tr><Td><span className="text-sm text-soot/60">No users match.</span></Td></tr>}
+        {users.length === 0 && <tr><Td><span className="text-sm text-soot/75">No users match.</span></Td></tr>}
       </Table>
 
       <Modal open={invite} onClose={() => setInvite(false)} title="Invite a user">
@@ -132,13 +132,13 @@ export default function AdminUsersPage() {
               <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
                 {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
               </select>
-              <p className="mt-1 text-[11px] text-soot/60">{scopeLabel(form.role)}</p></div>
+              <p className="mt-1 text-[13px] text-soot/75">{scopeLabel(form.role)}</p></div>
             <div><label className="label">Centre</label>
               <select className="input" value={form.centreId} onChange={(e) => setForm({ ...form, centreId: e.target.value })}>
                 {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select></div>
           </div>
-          <p className="rounded-xl border border-line bg-cream px-3 py-2 text-[11px] leading-relaxed text-soot/70">
+          <p className="rounded-xl border border-line bg-cream px-3 py-2 text-[13px] leading-relaxed text-soot/80">
             The user receives an invitation link, sets their own password and enrols an
             authenticator app. Two-factor authentication is enabled by default.
           </p>

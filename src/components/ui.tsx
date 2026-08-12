@@ -2,6 +2,9 @@
 
 import React from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { crumbsFor } from "@/lib/crumbs";
 
 /* ---------------- primitives ---------------- */
 
@@ -11,14 +14,50 @@ export function Card({ children, className = "", padded = true }: {
   return <div className={`card ${padded ? "p-4" : ""} ${className}`}>{children}</div>;
 }
 
-export function PageHeader({ title, subtitle, actions }: {
+/**
+ * Ancestor trail, above the page title.
+ *
+ * The final crumb is deliberately dropped — it always repeated the <h1>
+ * word for word, and that duplication is what made the strip read as
+ * clutter rather than orientation. What is left is the path TO here, which
+ * is the only part carrying information the title does not.
+ */
+export function Breadcrumbs() {
+  const trail = crumbsFor(usePathname()).slice(0, -1);
+  if (trail.length === 0) return null;
+  return (
+    <nav aria-label="Breadcrumb"
+      className="mb-1 flex min-w-0 flex-wrap items-center gap-1 text-[13px] font-medium text-soot/70">
+      {trail.map((c, i) => (
+        <React.Fragment key={c.label + i}>
+          {i > 0 && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-soot/40">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          )}
+          {c.href ? (
+            <Link href={c.href} className="transition-colors hover:text-forest-600">{c.label}</Link>
+          ) : (
+            <span>{c.label}</span>
+          )}
+        </React.Fragment>
+      ))}
+    </nav>
+  );
+}
+
+export function PageHeader({ title, subtitle, actions, crumbs = true }: {
   title: string; subtitle?: string; actions?: React.ReactNode;
+  /** Off for the few screens that sit inside another header. */
+  crumbs?: boolean;
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 className="font-display text-[20px] font-semibold tracking-[-0.01em] text-ink">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-[13px] text-soot/65">{subtitle}</p>}
+      <div className="min-w-0">
+        {crumbs && <Breadcrumbs />}
+        <h1 className="font-display text-[24px] font-semibold tracking-[-0.01em] text-ink">{title}</h1>
+        {subtitle && <p className="mt-1 max-w-[80ch] text-[15px] leading-relaxed text-soot/78">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -28,7 +67,7 @@ export function PageHeader({ title, subtitle, actions }: {
 export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="mb-2.5 flex items-center justify-between gap-3">
-      <h2 className="text-[13px] font-semibold text-ink">{children}</h2>
+      <h2 className="text-[15px] font-semibold text-ink">{children}</h2>
       {right}
     </div>
   );
@@ -49,7 +88,7 @@ export function Badge({ children, tone = "muted", className = "" }: {
   children: React.ReactNode; tone?: Tone; className?: string;
 }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-[3px] text-[11px] font-medium leading-none ${TONE[tone]} ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-[3px] text-[13px] font-medium leading-none ${TONE[tone]} ${className}`}>
       {children}
     </span>
   );
@@ -65,15 +104,15 @@ export function Stat({ label, value, sub, tone = "muted", icon, delta, deltaSub,
 }) {
   const chip = chipProp ? (
     <span className={
-      "text-[11px] font-semibold tabular-nums " +
-      (chipProp.tone === "up" ? "text-sage-600" : chipProp.tone === "down" ? "text-danger-600" : "text-soot/50")
+      "text-[13px] font-semibold tabular-nums " +
+      (chipProp.tone === "up" ? "text-sage-600" : chipProp.tone === "down" ? "text-danger-600" : "text-soot/70")
     }>
       {chipProp.text}
     </span>
   ) : delta === undefined || delta === null ? null : (
       <span className={
-        "text-[11px] font-semibold tabular-nums " +
-        (delta > 0 ? "text-sage-600" : delta < 0 ? "text-danger-600" : "text-soot/50")
+        "text-[13px] font-semibold tabular-nums " +
+        (delta > 0 ? "text-sage-600" : delta < 0 ? "text-danger-600" : "text-soot/70")
       }>
         {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
       </span>
@@ -81,12 +120,12 @@ export function Stat({ label, value, sub, tone = "muted", icon, delta, deltaSub,
   return (
     <div className="card p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs text-soot/60">{label}</p>
+        <p className="text-xs text-soot/75">{label}</p>
         {icon && <span className={`rounded-lg p-1 ${TONE[tone]}`}>{icon}</span>}
       </div>
       <p className="mt-1.5 text-2xl font-semibold leading-none tabular-nums tracking-[-0.01em] text-ink">{value}</p>
       {(chip || sub || deltaSub) && (
-        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-soot/55">
+        <p className="mt-2 flex items-center gap-1.5 text-[13px] text-soot/72">
           {chip}
           {deltaSub ?? sub}
         </p>
@@ -95,18 +134,112 @@ export function Stat({ label, value, sub, tone = "muted", icon, delta, deltaSub,
   );
 }
 
+/**
+ * A button that reports its own outcome instead of handing off to a toast.
+ *
+ * idle -> working (sweep) -> done (fills green, tick draws on) -> idle.
+ * The working state is held for a moment even when the work is instant:
+ * a file that appears with no acknowledgement reads as a failure.
+ */
+export function RunButton({
+  label, workingLabel, doneLabel, onRun, disabled, icon, className = "",
+  holdMs = 2400,
+}: {
+  label: React.ReactNode;
+  workingLabel: string;
+  doneLabel: string;
+  onRun: () => void | Promise<void>;
+  disabled?: boolean;
+  icon?: React.ReactNode;
+  className?: string;
+  holdMs?: number;
+}) {
+  const [state, setState] = React.useState<"idle" | "working" | "done">("idle");
+  const timers = React.useRef<number[]>([]);
+
+  React.useEffect(() => () => { timers.current.forEach(window.clearTimeout); }, []);
+
+  async function go() {
+    if (state !== "idle" || disabled) return;
+    setState("working");
+    const started = Date.now();
+    try {
+      await onRun();
+    } finally {
+      // Never flash: give the working state at least 600ms on screen.
+      const wait = Math.max(0, 600 - (Date.now() - started));
+      timers.current.push(window.setTimeout(() => {
+        setState("done");
+        timers.current.push(window.setTimeout(() => setState("idle"), holdMs));
+      }, wait));
+    }
+  }
+
+  const done = state === "done";
+  const working = state === "working";
+
+  return (
+    <button
+      onClick={go}
+      disabled={disabled || working}
+      aria-live="polite"
+      className={
+        "relative w-full overflow-hidden rounded-[10px] px-3.5 py-2.5 text-[15px] font-medium transition-all duration-300 " +
+        "disabled:cursor-not-allowed " +
+        (done
+          ? "mg-settle bg-sage-600 text-white shadow-[0_4px_16px_-4px_rgb(var(--color-sage-600)/0.55)]"
+          : "bg-forest-500 text-white hover:bg-forest-600 active:bg-forest-700 disabled:opacity-40") +
+        " " + className
+      }
+    >
+      {working && (
+        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <span className="mg-sweep absolute inset-y-0 w-1/3 bg-white/20 blur-[6px]" />
+        </span>
+      )}
+
+      <span className="relative flex items-center justify-center gap-2">
+        <span className="flex h-[18px] w-[18px] items-center justify-center">
+          {working ? (
+            <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : done ? (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+              <path className="mg-draw" d="M5 13l4.5 4.5L19 7" />
+            </svg>
+          ) : (
+            icon ?? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="m7 10 5 5 5-5" /><path d="M12 15V3" />
+              </svg>
+            )
+          )}
+        </span>
+        <span key={state} className="mg-lift">
+          {working ? workingLabel : done ? doneLabel : label}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export function EmptyState({ title, hint, action }: {
   title: string; hint?: string; action?: React.ReactNode;
 }) {
   return (
     <div className="card flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cream text-soot/40">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cream text-soot/60">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
           <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
         </svg>
       </div>
       <p className="text-sm font-semibold text-ink">{title}</p>
-      {hint && <p className="max-w-sm text-xs text-soot/60">{hint}</p>}
+      {hint && <p className="max-w-sm text-xs text-soot/75">{hint}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );
@@ -121,6 +254,58 @@ export function Progress({ value, tone = "info" }: { value: number; tone?: Tone 
   );
 }
 
+/**
+ * Checkbox. The native control cannot be styled consistently across
+ * browsers and its tick is invisible at this size, so the real input stays
+ * for accessibility (label, focus, keyboard, screen readers) and the square
+ * beside it is drawn.
+ */
+export function Check({ checked, onChange, label, hint, disabled, tone = "forest" }: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: React.ReactNode;
+  hint?: React.ReactNode;
+  disabled?: boolean;
+  tone?: "forest" | "gold";
+}) {
+  const on = tone === "gold"
+    ? "border-gold-500 bg-gold-500 text-goldink"
+    : "border-forest-500 bg-forest-500 text-white";
+  return (
+    <label className={"group flex cursor-pointer items-start gap-3 " + (disabled ? "cursor-not-allowed opacity-50" : "")}>
+      <span className="relative mt-[1px] flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+        />
+        <span
+          aria-hidden
+          className={
+            "flex h-[18px] w-[18px] items-center justify-center rounded-[6px] border-[1.5px] transition-all duration-150 " +
+            "peer-focus-visible:ring-2 peer-focus-visible:ring-forest-500/35 peer-focus-visible:ring-offset-1 " +
+            (checked
+              ? `${on} scale-100`
+              : "border-ink/20 bg-paper group-hover:border-forest-500/60 group-hover:bg-forest-50/50")
+          }
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"
+            className={"transition-all duration-150 " + (checked ? "scale-100 opacity-100" : "scale-50 opacity-0")}>
+            <path d="M5 13l4.5 4.5L19 7" />
+          </svg>
+        </span>
+      </span>
+      <span className="min-w-0 flex-1">
+        {label}
+        {hint && <span className="mt-0.5 block text-[13px] leading-relaxed text-soot/80">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
 export function Field({ label, hint, children, required }: {
   label: string; hint?: string; children: React.ReactNode; required?: boolean;
 }) {
@@ -131,7 +316,7 @@ export function Field({ label, hint, children, required }: {
         {required && <span className="text-danger-600">*</span>}
       </label>
       {children}
-      {hint && <p className="mt-1 text-[11px] text-soot/55">{hint}</p>}
+      {hint && <p className="mt-1 text-[13px] text-soot/72">{hint}</p>}
     </div>
   );
 }
@@ -173,20 +358,122 @@ export function Modal({ open, onClose, title, children, wide }: {
   );
 }
 
-export function Toast({ message, onDone }: { message: string | null; onDone: () => void }) {
+export type ToastTone = "success" | "info" | "warn" | "error";
+
+export type ToastData = {
+  title: string;
+  /** One line of detail — what happened, or what happens next. */
+  body?: string;
+  /** A reference the user may need to quote, shown in monospace. */
+  ref?: string;
+  tone?: ToastTone;
+  /** Optional follow-through, e.g. "View request". */
+  href?: string;
+  hrefLabel?: string;
+  /** Milliseconds on screen. Longer for anything with a reference to read. */
+  duration?: number;
+};
+
+const TOAST_TONE: Record<ToastTone, { ring: string; icon: string; rail: string; mark: React.ReactNode }> = {
+  success: {
+    ring: "border-sage-600/25", icon: "bg-sage-100 text-sage-700", rail: "bg-sage-600",
+    mark: <path className="mg-draw" d="M5 13l4.5 4.5L19 7" />,
+  },
+  info: {
+    ring: "border-forest-500/25", icon: "bg-forest-50 text-forest-600", rail: "bg-forest-500",
+    mark: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></>,
+  },
+  warn: {
+    ring: "border-gold-300", icon: "bg-gold-100 text-gold-600", rail: "bg-gold-500",
+    mark: <><circle cx="12" cy="12" r="9" /><path d="M12 7v6" /><path d="M12 16h.01" /></>,
+  },
+  error: {
+    ring: "border-danger-200", icon: "bg-danger-50 text-danger-700", rail: "bg-danger-600",
+    mark: <><circle cx="12" cy="12" r="9" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></>,
+  },
+};
+
+/**
+ * Confirmation surface. Enters from the right under the header, holds long
+ * enough to read a reference number, and counts itself down on a rail the
+ * user can pause by hovering. Portalled to <body> — an ancestor with
+ * backdrop-filter would otherwise capture the fixed positioning.
+ */
+export function Toast({ message, onDone }: {
+  message: string | ToastData | null;
+  onDone: () => void;
+}) {
+  const data: ToastData | null =
+    message === null ? null : typeof message === "string" ? { title: message } : message;
+
+  const [leaving, setLeaving] = React.useState(false);
+  const key = data ? `${data.title}|${data.ref ?? ""}` : "";
+  const duration = data?.duration ?? (data?.ref ? 6000 : 4200);
+
   React.useEffect(() => {
-    if (!message) return;
-    const t = window.setTimeout(onDone, 2600);
-    return () => window.clearTimeout(t);
-  }, [message, onDone]);
-  if (!message || typeof document === "undefined") return null;
+    if (!data) return;
+    setLeaving(false);
+    const hide = window.setTimeout(() => setLeaving(true), duration);
+    const done = window.setTimeout(onDone, duration + 200);
+    return () => { window.clearTimeout(hide); window.clearTimeout(done); };
+    // keyed on the message itself so a second toast restarts the clock
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, duration]);
+
+  if (!data || typeof document === "undefined") return null;
+  const tone = TOAST_TONE[data.tone ?? "success"];
+
   return createPortal(
-    <div className="fixed bottom-5 right-5 z-[80]">
-      <div className="mg-fade-up flex items-center gap-2 rounded-xl bg-ink/85 px-3.5 py-2.5 text-[13px] font-medium text-paper shadow-raised backdrop-blur-md">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5 13l4.5 4.5L19 7" />
-        </svg>
-        {message}
+    <div className="pointer-events-none fixed inset-x-4 top-5 z-[80] flex justify-center sm:inset-x-auto sm:right-5 sm:top-[76px] sm:justify-end">
+      <div
+        role="status"
+        aria-live="polite"
+        className={`mg-toast pointer-events-auto w-full overflow-hidden rounded-[14px] border bg-paper/95 shadow-[0_12px_40px_-8px_rgba(10,30,20,0.28)] backdrop-blur-xl sm:w-[380px] ${tone.ring} ${leaving ? "mg-toast-out" : "mg-toast-in"}`}
+      >
+        <div className="flex items-start gap-3 p-3.5">
+          <span className="relative mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center">
+            <span className={`mg-ring absolute inset-0 rounded-full ${tone.icon}`} />
+            <span className={`relative flex h-8 w-8 items-center justify-center rounded-full ${tone.icon}`}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                {tone.mark}
+              </svg>
+            </span>
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-snug text-ink">{data.title}</p>
+            {data.body && (
+              <p className="mt-0.5 text-[13px] leading-relaxed text-soot/80">{data.body}</p>
+            )}
+            {(data.ref || data.href) && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {data.ref && (
+                  <span className="rounded-md border border-ink/10 bg-cream px-1.5 py-0.5 font-mono text-[12px] font-semibold text-ink">
+                    {data.ref}
+                  </span>
+                )}
+                {data.href && (
+                  <Link href={data.href} onClick={onDone}
+                    className="text-[13px] font-semibold text-forest-600 hover:underline">
+                    {data.hrefLabel ?? "View"} &rarr;
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button onClick={() => { setLeaving(true); window.setTimeout(onDone, 200); }}
+            aria-label="Dismiss"
+            className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-soot/50 transition-colors hover:bg-ink/[0.05] hover:text-ink">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div className="h-[3px] w-full bg-ink/[0.06]">
+          <div className={`mg-countdown h-full ${tone.rail}`} style={{ animationDuration: `${duration}ms` }} />
+        </div>
       </div>
     </div>,
     document.body
@@ -243,8 +530,8 @@ export function RangeFilter({ value, onChange }: {
         <button
           key={v}
           onClick={() => onChange(v)}
-          className={"rounded-[8px] px-2.5 py-1 text-[12px] font-medium transition-colors " +
-            (value === v ? "bg-forest-500 text-white" : "text-soot/55 hover:text-ink")}
+          className={"rounded-[8px] px-2.5 py-1 text-[14px] font-medium transition-colors " +
+            (value === v ? "bg-forest-500 text-white" : "text-soot/72 hover:text-ink")}
         >
           {l}
         </button>
@@ -298,12 +585,12 @@ export function BarChart({ data, height = 150, format, color, emphasize = "max" 
               <div key={`${d.label}-${i}`} className="group relative flex h-full flex-1 items-end justify-center">
                 {/* dark chip on the peak — everything else on hover */}
                 {isMax ? (
-                  <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[10px] font-bold tabular-nums text-paper shadow-card"
+                  <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[12px] font-bold tabular-nums text-paper shadow-card"
                     style={{ bottom: barH + 6 }}>
                     {fmt(d.value)}
                   </span>
                 ) : (
-                  <span className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[10px] font-semibold text-paper opacity-0 shadow-raised transition-opacity duration-100 group-hover:opacity-100"
+                  <span className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[12px] font-semibold text-paper opacity-0 shadow-raised transition-opacity duration-100 group-hover:opacity-100"
                     style={{ bottom: barH + 6 }}>
                     {d.label} · {fmt(d.value)}
                   </span>
@@ -319,7 +606,7 @@ export function BarChart({ data, height = 150, format, color, emphasize = "max" 
       </div>
       <div className="mt-1.5 flex gap-[6px]">
         {data.map((d, i) => (
-          <p key={`${d.label}-${i}`} className="flex-1 truncate text-center text-[10px] text-soot/55" title={d.label}>
+          <p key={`${d.label}-${i}`} className="flex-1 truncate text-center text-[12px] text-soot/72" title={d.label}>
             {d.label}
           </p>
         ))}
@@ -378,7 +665,7 @@ export function DonutChart({ data, size = 148, unit = "", palette, stacked }: {
             <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: colourOf(i) }} />
             <span className="flex-1 truncate text-soot">{d.label}</span>
             <span className="font-bold tabular-nums text-ink">{d.value}</span>
-            <span className="w-9 text-right tabular-nums text-soot/45">
+            <span className="w-9 text-right tabular-nums text-soot/65">
               {total === 0 ? "0%" : `${Math.round((d.value / total) * 100)}%`}
             </span>
           </li>
@@ -484,7 +771,7 @@ export function AreaChart({ data, height = 150, format }: {
               style={{ left: `${(h.px / W) * 100}%`, top: h.py, background: "var(--chart-accent)" }}
             />
             <span
-              className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2.5 py-1 text-[10px] font-bold text-paper shadow-raised"
+              className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2.5 py-1 text-[12px] font-bold text-paper shadow-raised"
               style={{
                 left: `${Math.min(92, Math.max(8, (h.px / W) * 100))}%`,
                 top: Math.max(0, h.py - 30),
@@ -498,7 +785,7 @@ export function AreaChart({ data, height = 150, format }: {
       <div className="mt-1 flex">
         {data.map((d, i) => (
           <p key={`${d.label}-${i}`}
-            className={"flex-1 truncate text-center text-[10px] " + (hover === i ? "font-bold text-ink" : "text-soot/50")}>
+            className={"flex-1 truncate text-center text-[12px] " + (hover === i ? "font-bold text-ink" : "text-soot/70")}>
             {n > 9 && i % 2 === 1 ? "" : d.label}
           </p>
         ))}

@@ -42,7 +42,7 @@ export default function EpisodesPage() {
   if (!session) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
+    <div>
       <PageHeader
         title="Cancer episodes"
         subtitle={`${rows.length} episodes visible to you`}
@@ -102,7 +102,7 @@ export default function EpisodesPage() {
               <Td><Link href={`/episodes/${e.id}`} className="font-semibold text-forest-500 hover:underline">{p?.registryNo ?? "—"}</Link></Td>
               <Td><span className="font-medium text-ink">{p?.fullName ?? "—"}</span></Td>
               <Td><span className="text-xs text-soot">{cancerShort(e.cancerType)}</span></Td>
-              <Td><span className="text-xs text-soot/70">{findCentre(e.centreId).code}</span></Td>
+              <Td><span className="text-xs text-soot/80">{findCentre(e.centreId).code}</span></Td>
               <Td><Badge tone={stageTone(st.stage)}>{st.stage ? `Stage ${st.stage}` : "—"}</Badge></Td>
               <Td><span className="text-xs text-soot">{String(e.data.surgery || "—")}</span></Td>
               <Td align="center">
@@ -111,10 +111,10 @@ export default function EpisodesPage() {
               <Td align="center">
                 <div className="mx-auto w-20">
                   <Progress value={c.pct} tone={c.pct >= 80 ? "info" : c.pct >= 50 ? "warn" : "bad"} />
-                  <span className="mt-1 block text-[10px] tabular-nums text-soot/60">{c.pct}%</span>
+                  <span className="mt-1 block text-[12px] tabular-nums text-soot/75">{c.pct}%</span>
                 </div>
               </Td>
-              <Td align="right"><span className="text-xs text-soot/70">{fmtDate(e.updatedAt)}</span></Td>
+              <Td align="right"><span className="text-xs text-soot/80">{fmtDate(e.updatedAt)}</span></Td>
             </tr>
           ))}
         </Table>

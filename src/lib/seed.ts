@@ -3,7 +3,7 @@
  * information is present. Replace with a live database before go-live.
  */
 import { CENTRES } from "@/lib/centres";
-import type { AuditEntry, Episode, EpisodeData, Patient, RegistryUser } from "@/lib/types";
+import type { AuditEntry, Episode, EpisodeData, Patient, RegistryUser, ExportRequest } from "@/lib/types";
 import type { Role } from "@/lib/session";
 
 const REF = new Date("2026-08-08T09:00:00Z").getTime();
@@ -22,6 +22,7 @@ const int = (lo: number, hi: number) => lo + Math.floor(rand() * (hi - lo + 1));
 const chance = (p: number) => rand() < p;
 const daysAgo = (n: number) => new Date(REF - n * 86400000).toISOString();
 const dateAgo = (n: number) => daysAgo(n).slice(0, 10);
+const inDays = (n: number) => new Date(REF + n * 86400000).toISOString();
 
 const MALAY_M = ["Ahmad", "Mohd Faizal", "Zulkifli", "Hafiz", "Amirul", "Rosli", "Shahrul", "Nazri", "Khairul", "Azman", "Ismail", "Ridzuan", "Syed Omar", "Badrul", "Kamarul", "Firdaus", "Hakim", "Zaidi"];
 const MALAY_F = ["Siti Aminah", "Nurul Huda", "Fatimah", "Zaleha", "Norhayati", "Aisyah", "Rohana", "Suriani", "Mariam", "Halimah", "Ruzita", "Wan Azizah", "Noraini", "Salmah"];
@@ -365,6 +366,63 @@ export function buildSeed() {
       entityLabel: "Nationwide report — operative volume by centre" },
   );
 
+  // Export approvals — one waiting on a decision, one granted and still open,
+  // one refused. Enough for a reviewer to see the control working both ways.
+  const hod = users.find((u) => u.role === "hod")!;
+  const clinician = users.find((u) => u.role === "clinician")!;
+  const exportRequests: ExportRequest[] = [
+    {
+      id: "x90001", ref: "EXP-2026-014",
+      requestedBy: clinician.email, requestedByName: clinician.name,
+      requestedRole: "clinician", requestedAt: daysAgo(1),
+      purpose: "Multidisciplinary meeting on Thursday — need names and MyKad to "
+        + "match 18 gastrectomy cases against the theatre list before the meeting.",
+      basis: "Patient care / clinical follow-up", ethicsRef: "", includesIdentifiers: true,
+      scopeCentreId: clinician.centreId, scopeRecords: 18, scopeGroups: 6,
+      format: "xlsx", retentionDays: 30, status: "pending",
+    },
+    {
+      id: "x90002", ref: "EXP-2026-011",
+      requestedBy: researcher.email, requestedByName: researcher.name,
+      requestedRole: "researcher", requestedAt: daysAgo(6),
+      purpose: "Linkage against the National Cancer Registry for survival "
+        + "follow-up under the approved protocol.",
+      basis: "Ethics-approved research protocol", ethicsRef: "NMRR-25-01847-XYZ", includesIdentifiers: true,
+      scopeCentreId: "all", scopeRecords: 214, scopeGroups: 12,
+      format: "csv", retentionDays: 90, status: "approved",
+      decidedBy: head.email, decidedByName: head.name, decidedAt: daysAgo(5),
+      decisionNote: "NMRR reference verified against the approval letter. "
+        + "Linkage file to be destroyed once matching is complete.",
+      expiresAt: inDays(2),
+    },
+    {
+      id: "x90003", ref: "EXP-2026-009",
+      requestedBy: hod.email, requestedByName: hod.name,
+      requestedRole: "hod", requestedAt: daysAgo(12),
+      purpose: "Sharing the centre caseload with a device vendor for a "
+        + "benchmarking exercise.",
+      basis: "Internal audit or quality assurance", ethicsRef: "", includesIdentifiers: true,
+      scopeCentreId: hod.centreId, scopeRecords: 90, scopeGroups: 12,
+      format: "xlsx", retentionDays: 30, status: "rejected",
+      decidedBy: admin.email, decidedByName: admin.name, decidedAt: daysAgo(11),
+      decisionNote: "No lawful basis to disclose identifiable patient data to a "
+        + "commercial third party. Re-submit de-identified if the benchmarking "
+        + "still needs to happen.",
+    },
+  ];
+
+  audit.push(
+    { id: "a90004", at: daysAgo(5), userEmail: head.email, userRole: "head",
+      centreId: head.centreId, action: "approve", entity: "system", entityId: "x90002",
+      entityLabel: "EXP-2026-011 — identifiable export approved for " + researcher.name },
+    { id: "a90005", at: daysAgo(11), userEmail: admin.email, userRole: "admin",
+      centreId: admin.centreId, action: "reject", entity: "system", entityId: "x90003",
+      entityLabel: "EXP-2026-009 — identifiable export refused (no lawful basis)" },
+    { id: "a90006", at: daysAgo(1), userEmail: clinician.email, userRole: "clinician",
+      centreId: clinician.centreId, action: "request", entity: "system", entityId: "x90001",
+      entityLabel: "EXP-2026-014 — approval requested for 18 identifiable records" },
+  );
+
   audit.sort((a, b) => (a.at < b.at ? 1 : -1));
-  return { users, patients, episodes, audit };
+  return { users, patients, episodes, audit, exportRequests };
 }

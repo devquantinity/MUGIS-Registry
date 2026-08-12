@@ -41,7 +41,7 @@ export default function AdminCentresPage() {
   const totalPts = rows.reduce((s, r) => s + r.patients, 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1250px]">
+    <div>
       <PageHeader
         title="Participating centres"
         subtitle="Placeholder list — replace with the confirmed MUGIS centres before go-live."
@@ -68,12 +68,12 @@ export default function AdminCentresPage() {
             <Td align="center"><span className="tabular-nums">{r.episodes}</span></Td>
             <Td align="center">
               <span className="tabular-nums">{r.active}</span>
-              <span className="text-[10px] text-soot/50">/{r.users}</span>
+              <span className="text-[12px] text-soot/70">/{r.users}</span>
             </Td>
             <Td align="center">
               <div className="mx-auto w-24">
                 <Progress value={r.avgComplete} tone={r.avgComplete >= 80 ? "info" : r.avgComplete >= 50 ? "warn" : "bad"} />
-                <span className="mt-1 block text-[10px] tabular-nums text-soot/60">{r.avgComplete}%</span>
+                <span className="mt-1 block text-[12px] tabular-nums text-soot/75">{r.avgComplete}%</span>
               </div>
             </Td>
           </tr>

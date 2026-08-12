@@ -11,7 +11,8 @@ import { ROLE_LABELS, SessionProvider, useSession, type Role } from "@/lib/sessi
 import { seedUsers } from "@/lib/seed";
 import { StoreProvider, useStore } from "@/lib/store";
 import { useScoped } from "@/lib/useScoped";
-import { scopeLabel } from "@/lib/access";
+import { canApproveExport, scopeLabel } from "@/lib/access";
+import { useExportAlerts } from "@/lib/useExportAlerts";
 import { Modal } from "@/components/ui";
 import { ACCENTS, ThemeProvider, useTheme } from "@/lib/theme";
 import { initials, relTime } from "@/lib/format";
@@ -127,6 +128,18 @@ const ICONS = {
       <path d="M3 3v5h5" />
     </>
   ),
+  approvals: (
+    <>
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  pending: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
   crumb: <path d="m9 18 6-6-6-6" />,
   menu: (
     <>
@@ -183,6 +196,12 @@ const NAV: NavGroup[] = [
   {
     title: "Administration",
     items: [
+      {
+        href: "/admin/approvals",
+        label: "Export Approvals",
+        icon: ic(ICONS.approvals),
+        roles: ["admin", "head", "hod"],
+      },
       { href: "/admin/users", label: "Users", icon: ic(ICONS.users), roles: ["admin"] },
       { href: "/admin/centres", label: "Centres", icon: ic(ICONS.centres), roles: ["admin"] },
       {
@@ -227,23 +246,46 @@ function useNavCounts(): Record<string, number> {
     "/episodes": episodes.length,
   };
   if (session?.role === "admin") counts["/admin/users"] = state.users.length;
+  if (session && canApproveExport(session)) {
+    // Only what this person can actually action — their own requests are
+    // waiting on somebody else.
+    counts["/admin/approvals"] = state.exportRequests.filter(
+      (r) => r.status === "pending" && r.requestedBy !== session.email
+    ).length;
+  }
   return counts;
 }
 
 /** The brand gradient behind the whole app — sidebar reads directly on it. */
+const BACKDROP: React.CSSProperties = {
+  backgroundColor: "var(--bd-base)",
+  backgroundImage: [
+    "radial-gradient(55% 45% at 10% 104%, rgb(var(--bloom) / var(--bloom-o)) 0%, rgb(var(--bloom) / 0) 60%)",
+    "radial-gradient(70% 60% at 0% 0%, rgb(var(--glow-a) / 0.85) 0%, rgb(var(--glow-a) / 0) 70%)",
+    "radial-gradient(90% 90% at 45% 55%, rgb(var(--glow-b) / 0.9) 0%, rgb(var(--glow-b) / 0) 80%)",
+  ].join(", "),
+};
+
 function AppBackdrop() {
+  return <div aria-hidden className="fixed inset-0 -z-10" style={BACKDROP} />;
+}
+
+/**
+ * The sheet is inset 12px from the top, but the page — not the sheet —
+ * is what scrolls, so content used to travel up through that 12px strip
+ * and appear above the sticky header. This caps it.
+ *
+ * Same element geometry as AppBackdrop (fixed inset-0, identical gradients)
+ * and then clipped to the top 12px, so it lines up with the backdrop exactly
+ * instead of approximating it. z-20 sits above page content and below the
+ * z-30 header, whose top edge meets this strip's bottom edge.
+ */
+function TopCap() {
   return (
     <div
       aria-hidden
-      className="fixed inset-0 -z-10"
-      style={{
-        backgroundColor: "var(--bd-base)",
-        backgroundImage: [
-          "radial-gradient(55% 45% at 10% 104%, rgb(var(--bloom) / var(--bloom-o)) 0%, rgb(var(--bloom) / 0) 60%)",
-          "radial-gradient(70% 60% at 0% 0%, rgb(var(--glow-a) / 0.85) 0%, rgb(var(--glow-a) / 0) 70%)",
-          "radial-gradient(90% 90% at 45% 55%, rgb(var(--glow-b) / 0.9) 0%, rgb(var(--glow-b) / 0) 80%)",
-        ].join(", "),
-      }}
+      className="pointer-events-none fixed inset-0 z-20 hidden lg:block"
+      style={{ ...BACKDROP, clipPath: "inset(0 0 calc(100% - 12px) 0)" }}
     />
   );
 }
@@ -255,8 +297,8 @@ function Logo() {
         <Image src="/mugis-mark.png" alt="" width={250} height={250} className="h-6.5 w-6.5" />
       </span>
       <span className="leading-tight">
-        <span className="block text-[15px] font-bold tracking-tight text-white">MUGIS</span>
-        <span className="block text-[10.5px] text-white/45">Upper GI Registry</span>
+        <span className="block text-[17px] font-bold tracking-tight text-white">MUGIS</span>
+        <span className="block text-[12.5px] text-white/45">Upper GI Registry</span>
       </span>
     </Link>
   );
@@ -271,8 +313,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       {visibleGroups(session.role).map((group) => (
-        <div key={group.title} className="mt-5 first:mt-2">
-          <p className="px-3.5 pb-1.5 text-[10px] font-semibold text-white/35">{group.title}</p>
+        <div key={group.title} className="mt-6 first:mt-2">
+          <p className="mb-1 px-3.5 text-[12px] font-semibold uppercase tracking-wider text-white/40">{group.title}</p>
           {group.items.map((item) => {
             const active = isActive(pathname, item.href);
             const count = counts[item.href];
@@ -283,17 +325,17 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 className={
-                  "mb-1 flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-[13px] transition-all duration-150 " +
+                  "mb-1 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[15px] transition-all duration-150 " +
                   (active
                     ? "bg-white/15 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-md"
                     : "font-medium text-white/60 hover:bg-white/[0.07] hover:text-white")
                 }
               >
-                <span className={active ? "text-white" : "text-white/40"}>{item.icon}</span>
-                {item.label}
+                <span className={"shrink-0 " + (active ? "text-white" : "text-white/40")}>{item.icon}</span>
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 {count !== undefined && (
                   <span className={
-                    "ml-auto rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums " +
+                    "ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-medium tabular-nums " +
                     (active ? "bg-white/25 text-white" : "bg-white/10 text-white/55")
                   }>
                     {count}
@@ -323,12 +365,12 @@ function ProfileRow({ onNavigate }: { onNavigate?: () => void }) {
         (active ? "bg-white/15 backdrop-blur-md" : "hover:bg-white/[0.07]")
       }
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold text-white ring-1 ring-white/25">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-[13px] font-bold text-white ring-1 ring-white/25">
         {initials(session.name)}
       </span>
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block truncate text-[12.5px] font-semibold text-white">{session.name}</span>
-        <span className="block truncate text-[10.5px] text-white/45">{session.email}</span>
+        <span className="block truncate text-[14.5px] font-semibold text-white">{session.name}</span>
+        <span className="block truncate text-[12.5px] text-white/45">{session.email}</span>
       </span>
       <span className="text-white/35">{ic(ICONS.chevron, 14)}</span>
     </Link>
@@ -344,7 +386,7 @@ function ResetDemo() {
         onClick={() => setAsk(true)}
         aria-label="Reset demo data"
         title="Reset demo data"
-        className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/55 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
+        className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/72 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
       >
         {ic(ICONS.reset, 15)}
       </button>
@@ -371,9 +413,9 @@ function ResetDemo() {
 function AppearanceControls() {
   const { mode, setMode, accent, setAccent } = useTheme();
   return (
-    <div className="mx-2.5 mb-1.5 rounded-xl border border-white/10 bg-white/[0.06] px-2.5 py-2">
+    <div className="mx-3 mb-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold text-white/35">Appearance</span>
+        <span className="text-[12px] font-semibold text-white/35">Appearance</span>
         <div className="flex rounded-[9px] bg-black/25 p-0.5" role="group" aria-label="Colour mode">
           <button
             type="button"
@@ -431,16 +473,16 @@ function AppearanceControls() {
 /* Desktop sidebar — lives directly on the brand gradient */
 function Sidebar() {
   return (
-    <aside className="no-print fixed inset-y-0 left-0 z-40 hidden w-60 flex-col lg:flex">
-      <div className="px-4 pb-2 pt-6">
+    <aside className="no-print fixed inset-y-0 left-0 z-40 hidden w-[268px] flex-col lg:flex">
+      <div className="px-4 pb-3 pt-7">
         <Logo />
       </div>
-      <nav className="scrollbar-none flex-1 overflow-y-auto px-2.5 pb-3">
+      <nav className="scrollbar-none flex-1 overflow-y-auto px-3 pb-3">
         <NavLinks />
       </nav>
       <AppearanceControls />
       <div className="mx-4 border-t border-white/10" />
-      <div className="p-2.5">
+      <div className="p-3">
         <ProfileRow />
       </div>
     </aside>
@@ -504,8 +546,8 @@ function MobileHeader({ onMenu, onSearch }: { onMenu: () => void; onSearch: () =
         <span className="text-sm font-bold tracking-tight text-ink">MUGIS</span>
       </div>
       <div className="flex items-center gap-1">
-        <button onClick={onSearch} aria-label="Search" className="rounded-full p-2 text-ink hover:bg-ink/[0.05]">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <button onClick={onSearch} aria-label="Search" className="rounded-full p-2 text-forest-500 hover:bg-ink/[0.05]">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
           </svg>
         </button>
@@ -517,46 +559,10 @@ function MobileHeader({ onMenu, onSearch }: { onMenu: () => void; onSearch: () =
 
 /* ---------------- header ---------------- */
 
-const CRUMBS: [RegExp, { label: string; href?: string }[]][] = [
-  [/^\/$/, [{ label: "Overview" }]],
-  [/^\/patients\/new/, [{ label: "Registry" }, { label: "Patients", href: "/patients" }, { label: "New patient" }]],
-  [/^\/patients\/[^/]+/, [{ label: "Registry" }, { label: "Patients", href: "/patients" }, { label: "Patient record" }]],
-  [/^\/patients/, [{ label: "Registry" }, { label: "Patients" }]],
-  [/^\/episodes\/[^/]+/, [{ label: "Registry" }, { label: "Cancer episodes", href: "/episodes" }, { label: "Episode record" }]],
-  [/^\/episodes/, [{ label: "Registry" }, { label: "Cancer episodes" }]],
-  [/^\/reports\/export/, [{ label: "Reports", href: "/reports" }, { label: "Data export" }]],
-  [/^\/reports/, [{ label: "Reports" }]],
-  [/^\/admin\/users/, [{ label: "Administration" }, { label: "Users" }]],
-  [/^\/admin\/centres/, [{ label: "Administration" }, { label: "Centres" }]],
-  [/^\/admin\/audit/, [{ label: "Administration" }, { label: "Audit trail" }]],
-  [/^\/profile/, [{ label: "Account" }, { label: "Profile" }]],
-];
-
-function Breadcrumbs() {
-  const pathname = usePathname();
-  const trail = CRUMBS.find(([re]) => re.test(pathname))?.[1] ?? [{ label: "MUGIS" }];
-  return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[12.5px]">
-      {trail.map((c, i) => {
-        const last = i === trail.length - 1;
-        return (
-          <React.Fragment key={c.label + i}>
-            {i > 0 && <span className="text-soot/25">{ic(ICONS.crumb, 12)}</span>}
-            {c.href && !last ? (
-              <Link href={c.href} className="shrink-0 text-soot/55 transition-colors hover:text-ink">{c.label}</Link>
-            ) : (
-              <span className={"truncate " + (last ? "font-semibold text-ink" : "text-soot/55")}>{c.label}</span>
-            )}
-          </React.Fragment>
-        );
-      })}
-    </nav>
-  );
-}
-
 const ACTION_DOT: Record<string, string> = {
   create: "bg-sage-600", update: "bg-forest-500", delete: "bg-danger-600",
-  export: "bg-gold-500", view: "bg-soot/40", signin: "bg-soot/40", signout: "bg-soot/40",
+  export: "bg-gold-500", request: "bg-gold-500", approve: "bg-sage-600",
+  reject: "bg-danger-600", view: "bg-soot/40", signin: "bg-soot/40", signout: "bg-soot/40",
 };
 
 /** Recent audit activity for this user's scope, with an honest unread dot. */
@@ -607,14 +613,14 @@ function ActivityBell() {
       <button
         onClick={toggle}
         aria-label="Recent activity"
-        className="relative flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/55 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
+        className="relative flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/72 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
       >
         {ic(ICONS.bell, 15)}
         {unread && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-gold-500" />}
       </button>
       {open && (
         <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[330px] overflow-hidden rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 shadow-raised backdrop-blur-xl">
-          <p className="border-b border-ink/[0.06] px-3.5 py-2.5 text-[12.5px] font-semibold text-ink">
+          <p className="border-b border-ink/[0.06] px-3.5 py-2.5 text-[14.5px] font-semibold text-ink">
             Recent activity
           </p>
           <ul className="max-h-[300px] overflow-y-auto py-1">
@@ -622,21 +628,21 @@ function ActivityBell() {
               <li key={a.id} className="flex items-start gap-2.5 px-3.5 py-2">
                 <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${ACTION_DOT[a.action] ?? "bg-soot/40"}`} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] text-ink">{a.entityLabel}</span>
-                  <span className="block text-[11px] text-soot/50">
+                  <span className="block truncate text-[14.5px] text-ink">{a.entityLabel}</span>
+                  <span className="block text-[13px] text-soot/70">
                     {a.action}{auditAccess ? ` · ${a.userEmail.split("@")[0]}` : ""} · {relTime(a.at, Date.now())}
                   </span>
                 </span>
               </li>
             ))}
             {items.length === 0 && (
-              <li className="px-3.5 py-6 text-center text-[12.5px] text-soot/55">No activity yet.</li>
+              <li className="px-3.5 py-6 text-center text-[14.5px] text-soot/72">No activity yet.</li>
             )}
           </ul>
           <Link
             href={auditAccess ? "/admin/audit" : "/profile"}
             onClick={() => setOpen(false)}
-            className="block border-t border-ink/[0.06] bg-white/50 px-3.5 py-2 text-center text-[12px] font-semibold text-forest-500 transition-colors hover:text-forest-600"
+            className="block border-t border-ink/[0.06] bg-white/50 px-3.5 py-2 text-center text-[14px] font-semibold text-forest-500 transition-colors hover:text-forest-600"
           >
             {auditAccess ? "View full audit trail" : "View your activity"}
           </Link>
@@ -687,15 +693,15 @@ function RoleSwitcher() {
         title="Viewing as — switch role"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-8 items-center gap-1.5 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] px-2.5 text-[12px] font-semibold text-ink shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12]"
+        className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] px-2.5 text-[14px] font-semibold text-ink shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12]"
       >
         <span className="text-forest-500">{ic(ICONS.users, 13)}</span>
         {ROLE_LABELS[session.role]}
-        <span className="text-soot/45">{ic(ICONS.chevron, 12)}</span>
+        <span className="text-soot/65">{ic(ICONS.chevron, 12)}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[250px] overflow-hidden rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 p-1 shadow-raised backdrop-blur-xl">
-          <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold text-soot/45">View the registry as</p>
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[340px] overflow-hidden rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 p-1.5 shadow-raised backdrop-blur-xl">
+          <p className="px-2.5 pb-1.5 pt-1 text-[12px] font-semibold uppercase tracking-wide text-soot/70">View the registry as</p>
           {(Object.keys(ROLE_LABELS) as Role[]).map((r) => {
             const active = r === session.role;
             return (
@@ -703,12 +709,21 @@ function RoleSwitcher() {
                 key={r}
                 onClick={() => pick(r)}
                 className={
-                  "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] transition-colors " +
+                  "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-[14.5px] transition-colors " +
                   (active ? "bg-forest-50 font-semibold text-forest-600" : "text-ink hover:bg-ink/[0.04]")
                 }
               >
-                {ROLE_LABELS[r]}
-                <span className="shrink-0 text-[10.5px] text-soot/45">{scopeLabel(r)}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="w-3.5 shrink-0">
+                    {active && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 13l4.5 4.5L19 7" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="truncate">{ROLE_LABELS[r]}</span>
+                </span>
+                <span className="shrink-0 whitespace-nowrap text-[12.5px] text-soot/70">{scopeLabel(r)}</span>
               </button>
             );
           })}
@@ -718,39 +733,95 @@ function RoleSwitcher() {
   );
 }
 
+/**
+ * Export-approval alert. An approver sees what is waiting on them; a
+ * requester sees their own request move. Sits in the header so it follows
+ * the user around instead of living on one page they may never open.
+ */
+function ExportAlert() {
+  const { toApprove, myPending, myDecided } = useExportAlerts();
+
+  if (toApprove.length > 0) {
+    return (
+      <Link
+        href="/admin/approvals"
+        className="flex h-[34px] items-center gap-2 rounded-[10px] border border-gold-300 bg-gold-100 px-2.5 text-[13px] font-semibold text-goldink transition-colors hover:bg-gold-300/50"
+      >
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-500 opacity-70" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-500" />
+        </span>
+        {toApprove.length} export {toApprove.length === 1 ? "request" : "requests"}
+        <span className="hidden xl:inline font-medium text-goldink/70">awaiting you</span>
+      </Link>
+    );
+  }
+
+  if (myDecided) {
+    const ok = myDecided.status === "approved";
+    return (
+      <Link
+        href="/reports/export"
+        className={"flex h-[34px] items-center gap-2 rounded-[10px] border px-2.5 text-[13px] font-semibold transition-colors " +
+          (ok ? "border-sage-600/30 bg-sage-100 text-sage-700 hover:bg-sage-100/70"
+              : "border-danger-200 bg-danger-50 text-danger-700 hover:bg-danger-50/70")}
+      >
+        {ic(ok ? ICONS.approvals : ICONS.close, 13)}
+        {myDecided.ref} {ok ? "approved" : "refused"}
+      </Link>
+    );
+  }
+
+  if (myPending) {
+    return (
+      <span
+        title={`Submitted ${relTime(myPending.requestedAt, Date.now())} — waiting on an approver`}
+        className="flex h-[34px] items-center gap-2 rounded-[10px] border border-line bg-cream px-2.5 text-[13px] font-medium text-soot/80"
+      >
+        {ic(ICONS.pending, 13)}
+        {myPending.ref} pending
+      </span>
+    );
+  }
+
+  return null;
+}
+
 function Topbar({ onSearch }: { onSearch: () => void }) {
   const { session } = useSession();
   const [helpOpen, setHelpOpen] = useState(false);
   if (!session) return null;
   const centre = findCentre(session.centreId);
   return (
-    <header className="no-print sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-ink/[0.05] bg-white/55 dark:bg-paper/45 px-5 backdrop-blur-xl lg:top-3 lg:flex lg:rounded-t-[26px]">
-      {/* left — workspace + where am I */}
+    <header className="no-print sticky top-0 z-30 hidden h-16 items-center justify-between gap-4 border-b border-ink/[0.05] bg-white/55 dark:bg-paper/45 px-5 backdrop-blur-xl lg:top-3 lg:flex lg:rounded-t-[26px]">
+      {/* left — which workspace am I in */}
       <div className="flex min-w-0 items-center gap-3">
         <span
           title={centre.name}
           className="flex shrink-0 items-center gap-1.5 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] px-2.5 py-1.5 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm"
         >
           <span className="text-forest-500">{ic(ICONS.centres, 13)}</span>
-          <span className="text-[12px] font-semibold text-ink">{centre.code}</span>
-          <span className="hidden max-w-[180px] truncate text-[12px] text-soot/55 xl:inline">{centre.name}</span>
+          <span className="text-[14px] font-semibold text-ink">{centre.code}</span>
+          <span className="hidden max-w-[180px] truncate text-[14px] text-soot/72 xl:inline">{centre.name}</span>
         </span>
-        <span className="h-4 w-px shrink-0 bg-ink/[0.08]" />
-        <Breadcrumbs />
       </div>
 
       {/* right — search, activity, help, reset, you */}
       <div className="flex shrink-0 items-center gap-2">
         <button
           onClick={onSearch}
-          className="hidden h-8 items-center gap-2 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] pl-3 pr-1.5 text-xs text-soot/50 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-soot md:flex"
+          aria-label="Search patients"
+          className="group hidden h-11 w-[300px] items-center gap-2.5 rounded-[12px] border border-ink/10 bg-white/85 dark:border-white/[0.12] dark:bg-white/[0.09] pl-3.5 pr-2 text-[15px] text-soot/75 shadow-[0_1px_2px_rgba(10,30,20,0.06)] transition-all hover:border-forest-500/45 hover:bg-white hover:text-ink hover:shadow-[0_2px_10px_rgba(10,30,20,0.10)] dark:hover:bg-white/[0.14] md:flex lg:w-[340px] xl:w-[400px]"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"
+            className="shrink-0 text-forest-500 transition-transform duration-150 group-hover:scale-110">
             <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
           </svg>
-          Search patients…
-          <kbd className="rounded-[6px] border border-ink/10 bg-white/70 dark:bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-soot/45">⌘K</kbd>
+          <span className="flex-1 text-left">Search patients…</span>
+          <kbd className="shrink-0 rounded-[7px] border border-ink/10 bg-white/80 dark:bg-white/[0.10] px-2 py-1 text-[12px] font-semibold text-soot/70">⌘K</kbd>
         </button>
+
+        <ExportAlert />
 
         <span className="h-4 w-px bg-ink/[0.08]" />
 
@@ -762,7 +833,7 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
           onClick={() => setHelpOpen(true)}
           aria-label="Keyboard shortcuts"
           title="Keyboard shortcuts"
-          className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/55 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
+          className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/72 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
         >
           {ic(ICONS.help, 15)}
         </button>
@@ -774,7 +845,7 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
         <Link
           href="/profile"
           title={`${session.name} — ${ROLE_LABELS[session.role]} · ${scopeLabel(session.role)}`}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-forest-500 text-[11px] font-bold text-white ring-2 ring-white/70 dark:ring-white/25 transition-transform hover:scale-105"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-forest-500 text-[13px] font-bold text-white ring-2 ring-white/70 dark:ring-white/25 transition-transform hover:scale-105"
         >
           {initials(session.name)}
         </Link>
@@ -785,7 +856,7 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
           {SHORTCUTS.map(([keys, what]) => (
             <li key={keys} className="flex items-center justify-between gap-4 py-2.5">
               <span className="text-sm text-soot">{what}</span>
-              <kbd className="shrink-0 rounded-[8px] border border-ink/10 bg-cream px-2 py-1 text-[11.5px] font-semibold text-ink">
+              <kbd className="shrink-0 rounded-[8px] border border-ink/10 bg-cream px-2 py-1 text-[13.5px] font-semibold text-ink">
                 {keys}
               </kbd>
             </li>
@@ -826,11 +897,12 @@ function Frame({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       <AppBackdrop />
+      <TopCap />
       <Sidebar />
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       {/* the floating content sheet — inset so the gradient shows around it */}
-      <div className="min-h-screen lg:py-3 lg:pl-60 lg:pr-3">
+      <div className="min-h-screen lg:py-3 lg:pl-[268px] lg:pr-3">
         <div
           className="min-h-screen bg-cream shadow-[0_2px_28px_rgba(0,0,0,0.14)] lg:min-h-[calc(100vh-24px)] lg:rounded-[26px]"
           style={{
@@ -842,7 +914,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         >
           <MobileHeader onMenu={() => setMenuOpen(true)} onSearch={() => setSearchOpen(true)} />
           <Topbar onSearch={() => setSearchOpen(true)} />
-          <main id="main" className="px-4 pb-16 pt-5 sm:px-6 lg:px-8 lg:pb-10 lg:pt-7">
+          <main id="main" className="mx-auto w-full max-w-[1720px] px-4 pb-16 pt-5 sm:px-5 lg:px-6 lg:pb-10 lg:pt-6 2xl:px-8">
             {children}
           </main>
         </div>

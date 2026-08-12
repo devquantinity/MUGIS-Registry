@@ -50,7 +50,7 @@ function VisualPanel() {
       </div>
 
       <div className="relative z-10 flex flex-1 flex-col justify-center px-12 xl:px-16">
-        <p className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-gold-400/15 px-3 py-1 text-[11px] font-bold text-gold-300">
+        <p className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-gold-400/15 px-3 py-1 text-[13px] font-bold text-gold-300">
           Upper GI Cancer Registry
         </p>
         <h2 className="text-4xl font-bold leading-[1.08] tracking-tight text-white xl:text-5xl">
@@ -80,11 +80,11 @@ function VisualPanel() {
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[11px] text-forest-100/60">Cancer types</p>
+              <p className="text-[13px] text-forest-100/60">Cancer types</p>
               <p className="mt-0.5 text-xl font-bold tabular-nums text-white">4</p>
             </div>
             <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[11px] text-forest-100/60">Centres</p>
+              <p className="text-[13px] text-forest-100/60">Centres</p>
               <p className="mt-0.5 text-xl font-bold tabular-nums text-white">
                 {CENTRES.length}
               </p>
@@ -93,18 +93,18 @@ function VisualPanel() {
 
           <div className="mt-4 flex items-center gap-2 rounded-xl bg-white/10 p-3">
             <Trail className="h-4 w-4 shrink-0 text-gold-300" />
-            <p className="text-[11px] leading-relaxed text-forest-100/70">
+            <p className="text-[13px] leading-relaxed text-forest-100/70">
               Every entry and edit is written to an immutable audit trail.
             </p>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[11px] text-forest-100/60">Patients registered</p>
+              <p className="text-[13px] text-forest-100/60">Patients registered</p>
               <p className="mt-0.5 text-xl font-bold tabular-nums text-white">{state.patients.length}</p>
             </div>
             <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[11px] text-forest-100/60">Episodes recorded</p>
+              <p className="text-[13px] text-forest-100/60">Episodes recorded</p>
               <p className="mt-0.5 text-xl font-bold tabular-nums text-white">{state.episodes.length}</p>
             </div>
           </div>
@@ -181,7 +181,7 @@ function OtpInput({ code, onCode, disabled, onComplete }: {
   return (
     <div className="flex items-center gap-2">
       {[0, 1, 2].map(box)}
-      <span aria-hidden className="w-2 text-center text-soot/40">–</span>
+      <span aria-hidden className="w-2 text-center text-soot/60">–</span>
       {[3, 4, 5].map(box)}
     </div>
   );
@@ -281,7 +281,7 @@ export default function LoginScreen() {
                 <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
                   Welcome
                 </h1>
-                <p className="mt-1 text-sm text-soot/70">
+                <p className="mt-1 text-sm text-soot/80">
                   Upper GI Cancer Registry. Sign in to your centre workspace.
                 </p>
 
@@ -326,7 +326,7 @@ export default function LoginScreen() {
                     autoComplete="current-password"
                     placeholder="••••••••"
                   />
-                  <p className="mt-1.5 text-[11px] text-soot/55">
+                  <p className="mt-1.5 text-[13px] text-soot/72">
                     Prefilled with your centre&rsquo;s demo account — any password is
                     accepted. Your role is switched from the header once inside.
                   </p>
@@ -341,7 +341,7 @@ export default function LoginScreen() {
                   <span aria-hidden>→</span>
                 </button>
 
-                <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[11px] leading-relaxed text-goldink/70">
+                <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[13px] leading-relaxed text-goldink/70">
                   Demo mode — any password and any 6-digit code are accepted.
                   Live deployment uses admin-invited accounts with
                   authenticator-app 2FA.
@@ -352,7 +352,7 @@ export default function LoginScreen() {
                 <button
                   type="button"
                   onClick={back}
-                  className="mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-soot/60 transition-colors hover:text-ink"
+                  className="mb-4 inline-flex items-center gap-1.5 text-[14.5px] font-medium text-soot/75 transition-colors hover:text-ink"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
@@ -363,16 +363,16 @@ export default function LoginScreen() {
                 <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
                   Two-step verification
                 </h1>
-                <p className="mt-1 text-sm text-soot/70">
+                <p className="mt-1 text-sm text-soot/80">
                   Enter the 6-digit code from your authenticator app.
                 </p>
 
                 <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-ink/[0.06] bg-white/60 py-1 pl-1 pr-3 dark:bg-white/[0.06]">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-forest-500 text-[10px] font-bold text-white">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-forest-500 text-[12px] font-bold text-white">
                     {target.name.slice(0, 1)}
                   </span>
-                  <span className="truncate text-[12px] text-soot">{target.email}</span>
-                  <span className="shrink-0 text-[11px] text-soot/45">· {ROLE_LABELS[target.role]}</span>
+                  <span className="truncate text-[14px] text-soot">{target.email}</span>
+                  <span className="shrink-0 text-[13px] text-soot/65">· {ROLE_LABELS[target.role]}</span>
                 </div>
 
                 <div className="mt-6">
@@ -399,7 +399,7 @@ export default function LoginScreen() {
                   )}
                 </button>
 
-                <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[11px] leading-relaxed text-goldink/70">
+                <p className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-center text-[13px] leading-relaxed text-goldink/70">
                   Demo mode — any 6-digit code is accepted. Lost your device?
                   Contact your registry administrator.
                 </p>
@@ -408,7 +408,7 @@ export default function LoginScreen() {
           </form>
         </div>
 
-        <p className="relative z-10 px-6 pb-6 text-center text-[11px] text-soot/45 sm:px-10">
+        <p className="relative z-10 px-6 pb-6 text-center text-[13px] text-soot/65 sm:px-10">
           © 2026 Malaysian Upper Gastrointestinal Surgical Society
         </p>
       </div>

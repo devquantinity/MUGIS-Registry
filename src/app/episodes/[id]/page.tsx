@@ -114,8 +114,8 @@ export default function EpisodePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1250px]">
-      <Link href={`/patients/${patient.id}`} className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-soot/60 hover:text-ink">
+    <div>
+      <Link href={`/patients/${patient.id}`} className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-soot/75 hover:text-ink">
         ← {patient.registryNo}
       </Link>
 
@@ -156,23 +156,23 @@ export default function EpisodePage() {
       <Card padded={false} className="mb-4">
         <div className="grid grid-cols-2 divide-y divide-line sm:grid-cols-4 sm:divide-y-0 sm:divide-x">
           <div className="px-4 py-2.5" title={stage.reason}>
-            <p className="text-[10px] font-semibold text-soot/55">AJCC stage</p>
+            <p className="text-[12px] font-semibold text-soot/72">AJCC stage</p>
             <div className="mt-1"><Badge tone={stageTone(stage.stage)}>{stage.stage ? `Stage ${stage.stage}` : "Not derived"}</Badge></div>
           </div>
           <div className="px-4 py-2.5">
-            <p className="text-[10px] font-semibold text-soot/55">Charlson</p>
+            <p className="text-[12px] font-semibold text-soot/72">Charlson</p>
             <p className="mt-0.5 text-lg font-bold tabular-nums leading-tight text-ink">{cci.score}
-              <span className="ml-1.5 text-[10px] font-normal text-soot/55">{cci.breakdown.length} factors</span></p>
+              <span className="ml-1.5 text-[12px] font-normal text-soot/72">{cci.breakdown.length} factors</span></p>
           </div>
           <div className="px-4 py-2.5">
-            <p className="text-[10px] font-semibold text-soot/55">Nodes +/total → N</p>
+            <p className="text-[12px] font-semibold text-soot/72">Nodes +/total → N</p>
             <p className="mt-0.5 text-lg font-bold tabular-nums leading-tight text-ink">
-              {draft.nodePositive ?? "—"}<span className="text-sm font-normal text-soot/45">/{draft.nodeHarvested ?? "—"}</span>
-              <span className="ml-1.5 text-[11px] font-semibold text-forest-600">{stage.n ?? ""}</span>
+              {draft.nodePositive ?? "—"}<span className="text-sm font-normal text-soot/65">/{draft.nodeHarvested ?? "—"}</span>
+              <span className="ml-1.5 text-[13px] font-semibold text-forest-600">{stage.n ?? ""}</span>
             </p>
           </div>
           <div className="px-4 py-2.5">
-            <p className="text-[10px] font-semibold text-soot/55">Complete</p>
+            <p className="text-[12px] font-semibold text-soot/72">Complete</p>
             <div className="mt-1 flex items-center gap-2">
               <span className="text-lg font-bold tabular-nums leading-tight text-ink">{comp.pct}%</span>
               <div className="w-16"><Progress value={comp.pct} tone={comp.pct >= 80 ? "info" : comp.pct >= 50 ? "warn" : "bad"} /></div>
@@ -190,7 +190,7 @@ export default function EpisodePage() {
         onExit={() => router.push(`/patients/${patient.id}`)}
       />
 
-      <p className="mt-5 border-t border-line pt-3 text-center text-[11px] text-soot/50">
+      <p className="mt-5 border-t border-line pt-3 text-center text-[13px] text-soot/70">
         Entered by {episode.createdBy} · created {fmtDateTime(episode.createdAt)} · last
         updated {fmtDateTime(episode.updatedAt)} · diagnosis {fmtDate(String(draft.dateDiagnosis ?? ""))}
       </p>

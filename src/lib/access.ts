@@ -57,12 +57,44 @@ export function canCreate(s: Session): boolean {
   return s.role === "admin" || s.role === "clinician" || s.role === "trainee";
 }
 
-export function canExport(s: Session): boolean {
-  return s.role !== "trainee";
+/**
+ * Who may open the export tool. Everyone may assemble an extract; whether
+ * they can release it is exportNeedsApproval() below.
+ */
+export function canExport(): boolean {
+  return true;
+}
+
+/**
+ * Who may release an extract on their own authority.
+ *
+ * A trainee or clinician can build and request one, but bulk data does not
+ * leave the registry on a junior signature — the same reasoning as the
+ * identifier rule, applied to volume rather than to identifiability.
+ * Seniors still need approval for direct identifiers.
+ */
+export function exportNeedsApproval(s: Session): boolean {
+  return s.role === "clinician" || s.role === "trainee";
 }
 
 export function canAdmin(s: Session): boolean {
   return s.role === "admin";
+}
+
+/**
+ * Who may release direct identifiers. Deliberately narrow: the two roles
+ * accountable for the registry as a whole, plus the administrator.
+ */
+export function canApproveExport(s: Session): boolean {
+  return s.role === "admin" || s.role === "head" || s.role === "hod";
+}
+
+/**
+ * Four-eyes rule — nobody signs off their own request, whatever their role.
+ * An admin who needs an identifiable extract still waits for someone else.
+ */
+export function canDecideOn(s: Session, requesterEmail: string): boolean {
+  return canApproveExport(s) && s.email !== requesterEmail;
 }
 
 export function canSeeAudit(s: Session): boolean {

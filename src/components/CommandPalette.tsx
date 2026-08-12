@@ -65,7 +65,7 @@ function Hi({ text, q }: { text: string; q: string }) {
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-ink/10 bg-white px-1 dark:bg-white/[0.08] text-[10px] font-medium text-soot/60 shadow-[0_1px_0_rgba(10,30,20,0.06)]">
+    <kbd className="inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-[5px] border border-ink/10 bg-white px-1 dark:bg-white/[0.08] text-[12px] font-medium text-soot/75 shadow-[0_1px_0_rgba(10,30,20,0.06)]">
       {children}
     </kbd>
   );
@@ -99,7 +99,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { kind: "page", id: "/profile", title: "Profile", meta: "Account", href: "/profile", group: g },
     ];
     if (canCreate(sess)) p.splice(2, 0, { kind: "page", id: "/patients/new", title: "New Patient", meta: "Register", href: "/patients/new", group: g });
-    if (canExport(sess)) p.push({ kind: "page", id: "/reports/export", title: "Data Export", meta: "CSV · Excel · PDF", href: "/reports/export", group: g });
+    if (canExport()) p.push({ kind: "page", id: "/reports/export", title: "Data Export", meta: "CSV · Excel · PDF", href: "/reports/export", group: g });
     if (canAdmin(sess)) {
       p.push({ kind: "page", id: "/admin/users", title: "Users", meta: "Administration", href: "/admin/users", group: g });
       p.push({ kind: "page", id: "/admin/centres", title: "Centres", meta: "Administration", href: "/admin/centres", group: g });
@@ -178,28 +178,31 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Search">
-      <div className="absolute inset-0 bg-ink/45" onClick={onClose} />
-      <div className="mg-pop relative z-10 mx-auto mt-[12vh] w-[min(600px,92vw)] overflow-hidden rounded-[14px] border border-ink/[0.08] bg-white/[0.97] dark:bg-paper/[0.98] shadow-[0_24px_80px_-12px_rgba(6,48,28,0.35)] backdrop-blur-2xl">
+      <div className="absolute inset-0 bg-ink/50 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="mg-pop relative z-10 mx-auto mt-[10vh] w-[min(760px,94vw)] overflow-hidden rounded-[18px] border border-ink/[0.08] bg-white/[0.97] dark:bg-paper/[0.98] shadow-[0_32px_90px_-14px_rgba(6,48,28,0.42)] backdrop-blur-2xl">
         {/* borderless input row — the panel IS the field */}
-        <div className="flex items-center gap-3 px-4">
-          <span className="shrink-0 text-soot/35"><SearchIcon size={16} /></span>
+        <div className="flex items-center gap-3 px-5">
+          <span className="shrink-0 text-forest-500"><SearchIcon size={19} /></span>
           <input
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={onKey}
             placeholder="Search patients, pages…"
-            className="h-[52px] min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-soot/35 focus-visible:outline-none"
+            className="h-[60px] min-w-0 flex-1 bg-transparent text-[18px] text-ink outline-none placeholder:text-soot/50 focus-visible:outline-none"
           />
           <Kbd>esc</Kbd>
         </div>
         <div className="border-t border-ink/[0.06]" />
 
-        <div ref={listRef} className="max-h-[400px] overflow-y-auto p-1.5">
+        <div ref={listRef} className="max-h-[min(520px,58vh)] overflow-y-auto p-2">
           {items.length === 0 && (
             <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
-              <span className="text-soot/25"><SearchIcon size={22} /></span>
-              <p className="text-[13px] text-soot/55">No matches for &ldquo;{q}&rdquo; in your scope.</p>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ink/[0.04] text-soot/50">
+                <SearchIcon size={22} />
+              </span>
+              <p className="text-[15px] font-medium text-ink">No matches for &ldquo;{q}&rdquo;</p>
+              <p className="text-[13px] text-soot/70">Nothing in your scope matches that name, registry number or MyKad.</p>
             </div>
           )}
           {items.map((item, i) => {
@@ -209,7 +212,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             return (
               <React.Fragment key={item.kind + item.id}>
                 {header && (
-                  <p className="px-3 pb-1 pt-3 text-[11px] font-medium text-soot/40 first:pt-1.5">{header}</p>
+                  <p className="px-3 pb-1.5 pt-4 text-[12px] font-semibold uppercase tracking-wide text-soot/60 first:pt-1.5">{header}</p>
                 )}
                 {item.kind === "action" && <div className="mx-2 my-1.5 border-t border-ink/[0.06]" />}
                 <button
@@ -217,37 +220,44 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(item)}
                   className={
-                    "flex h-11 w-full items-center gap-3 rounded-[9px] px-3 text-left transition-colors duration-75 " +
-                    (isActive ? "bg-ink/[0.05]" : "")
+                    "relative flex h-[52px] w-full items-center gap-3.5 rounded-[11px] px-3 text-left transition-colors duration-75 " +
+                    (isActive ? "bg-forest-50 dark:bg-white/[0.06]" : "hover:bg-ink/[0.03]")
                   }
                 >
+                  {isActive && (
+                    <span aria-hidden
+                      className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-forest-500" />
+                  )}
                   {item.kind === "patient" ? (
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-forest-500 text-[9.5px] font-bold leading-none text-white">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-forest-500 text-[13px] font-bold leading-none text-white ring-1 ring-inset ring-white/20">
                       {initials(item.title)}
                     </span>
                   ) : item.kind === "action" ? (
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-forest-50 text-forest-600">
-                      <SearchIcon size={13} />
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-forest-50 text-forest-600">
+                      <SearchIcon size={16} />
                     </span>
                   ) : (
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center text-soot/45">
-                      {PAGE_ICONS[item.id] ?? <SearchIcon size={13} />}
+                    <span className={"flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] transition-colors " +
+                      (isActive ? "bg-white text-forest-600 dark:bg-white/10" : "bg-ink/[0.04] text-soot/70")}>
+                      {PAGE_ICONS[item.id] ?? <SearchIcon size={16} />}
                     </span>
                   )}
-                  <span className={"min-w-0 flex-1 truncate text-[13.5px] " + (item.kind === "action" ? "font-medium text-forest-600" : "text-ink")}>
+                  <span className={"min-w-0 flex-1 truncate text-[15.5px] " + (item.kind === "action" ? "font-semibold text-forest-600" : "font-medium text-ink")}>
                     <Hi text={item.title} q={item.kind === "patient" ? q : ""} />
                   </span>
-                  <span className="shrink-0 text-[12px] tabular-nums text-soot/45">
+                  <span className="shrink-0 text-[13.5px] tabular-nums text-soot/65">
                     <Hi text={item.meta} q={item.kind === "patient" ? q : ""} />
                   </span>
-                  {isActive && <Kbd>↵</Kbd>}
+                  <span className={"shrink-0 transition-opacity " + (isActive ? "opacity-100" : "opacity-0")}>
+                    <Kbd>↵</Kbd>
+                  </span>
                 </button>
               </React.Fragment>
             );
           })}
         </div>
 
-        <div className="flex h-10 items-center gap-4 border-t border-ink/[0.06] px-4 text-[11px] text-soot/45">
+        <div className="flex h-11 items-center gap-4 border-t border-ink/[0.06] bg-cream/60 px-5 text-[13px] text-soot/70 dark:bg-white/[0.02]">
           <span className="flex items-center gap-1.5"><Kbd>↑</Kbd><Kbd>↓</Kbd> navigate</span>
           <span className="flex items-center gap-1.5"><Kbd>↵</Kbd> open</span>
           <span className="ml-auto tabular-nums">

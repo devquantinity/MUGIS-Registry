@@ -33,7 +33,7 @@ export default function ProfilePage() {
   const centre = findCentre(session.centreId);
 
   return (
-    <div className="mx-auto w-full max-w-[1000px]">
+    <div>
       <PageHeader title="Profile" subtitle="Your account, access scope and recent activity." />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -44,7 +44,7 @@ export default function ProfilePage() {
             </span>
             <div className="min-w-0">
               <h2 className="truncate font-display text-xl font-bold text-ink">{session.name}</h2>
-              <p className="truncate text-sm text-soot/70">{session.email}</p>
+              <p className="truncate text-sm text-soot/80">{session.email}</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <Badge tone="info">{ROLE_LABELS[session.role]}</Badge>
                 <Badge tone="muted">{centre.code}</Badge>
@@ -55,19 +55,19 @@ export default function ProfilePage() {
 
           <dl className="mt-5 grid gap-x-6 gap-y-3 border-t border-line pt-4 sm:grid-cols-2">
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Centre</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Centre</dt>
               <dd className="mt-0.5 text-sm text-ink">{centre.name}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Access scope</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Access scope</dt>
               <dd className="mt-0.5 text-sm text-ink">{scopeLabel(session.role)}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Account status</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Account status</dt>
               <dd className="mt-0.5 text-sm text-ink">{me ? me.status : "Demo session"}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold text-soot/55">Last active</dt>
+              <dt className="text-[13px] font-semibold text-soot/72">Last active</dt>
               <dd className="mt-0.5 text-sm text-ink">{me ? fmtDateTime(me.lastActive) : "Now"}</dd>
             </div>
           </dl>
@@ -89,11 +89,11 @@ export default function ProfilePage() {
                   {a.action}
                 </Badge>
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">{a.entityLabel}</span>
-                <span className="shrink-0 text-[11px] tabular-nums text-soot/50">{fmtDateTime(a.at)}</span>
+                <span className="shrink-0 text-[13px] tabular-nums text-soot/70">{fmtDateTime(a.at)}</span>
               </li>
             ))}
             {mine.activity.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-soot/60">
+              <li className="px-4 py-6 text-center text-sm text-soot/75">
                 Nothing yet — activity appears here as you enter and update records.
               </li>
             )}
@@ -104,7 +104,7 @@ export default function ProfilePage() {
       <div className="mt-8 border-t border-line pt-4 text-center">
         <button
           onClick={signOut}
-          className="text-xs text-soot/50 underline-offset-2 transition-colors hover:text-soot hover:underline"
+          className="text-xs text-soot/70 underline-offset-2 transition-colors hover:text-soot hover:underline"
         >
           Sign out of the registry
         </button>

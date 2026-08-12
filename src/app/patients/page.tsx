@@ -8,7 +8,7 @@ import { useScoped } from "@/lib/useScoped";
 import { CENTRES, findCentre } from "@/lib/centres";
 import { requiredFieldIds } from "@/lib/parameters";
 import { completeness, deriveStage, stageTone } from "@/lib/staging";
-import { canCreate, canExport } from "@/lib/access";
+import { canCreate, exportNeedsApproval } from "@/lib/access";
 import { ageFrom, fmtDate, maskMykad, toCsv, download } from "@/lib/format";
 import { makeXlsx, downloadBlob } from "@/lib/xlsx";
 import { Badge, Card, EmptyState, PageHeader, Progress, Table, Td, Th, Toast } from "@/components/ui";
@@ -103,7 +103,7 @@ export default function PatientsPage() {
           className={"inline-flex items-center gap-1 hover:text-ink " + (active ? "text-ink" : "")}
         >
           {label}
-          {active && <span className="text-[9px]">{dir === "asc" ? "▲" : "▼"}</span>}
+          {active && <span className="text-[11px]">{dir === "asc" ? "▲" : "▼"}</span>}
         </button>
       </Th>
     );
@@ -134,7 +134,7 @@ export default function PatientsPage() {
   if (!session) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
+    <div>
       <PageHeader
         title="Patients"
         subtitle={`${filtered.length} of ${patients.length} records${hidden ? " · identifiers hidden for your role" : ""}`}
@@ -145,8 +145,8 @@ export default function PatientsPage() {
                 {reveal ? "Hide MyKad" : "Reveal MyKad"}
               </button>
             )}
-            {canExport(session) && <button onClick={exportCsv} className="btn-secondary">CSV</button>}
-            {canExport(session) && <button onClick={exportXlsx} className="btn-secondary">Excel</button>}
+            {!exportNeedsApproval(session) && <button onClick={exportCsv} className="btn-secondary">CSV</button>}
+            {!exportNeedsApproval(session) && <button onClick={exportXlsx} className="btn-secondary">Excel</button>}
             {canCreate(session) && <Link href="/patients/new" className="btn-primary">New patient</Link>}
           </>
         }
@@ -210,26 +210,26 @@ export default function PatientsPage() {
                 </Td>
                 <Td>
                   <span className="font-medium text-ink">{r.p.fullName}</span>
-                  <span className="ml-2 text-[11px] text-soot/55">{r.p.ethnic} · {r.p.state}</span>
+                  <span className="ml-2 text-[13px] text-soot/72">{r.p.ethnic} · {r.p.state}</span>
                 </Td>
-                <Td><span className="font-mono text-[11px] text-soot/70">{hidden ? "—" : maskMykad(r.p.mykad, reveal)}</span></Td>
+                <Td><span className="font-mono text-[13px] text-soot/80">{hidden ? "—" : maskMykad(r.p.mykad, reveal)}</span></Td>
                 <Td align="center"><span className="tabular-nums">{r.age ?? "—"}</span></Td>
-                <Td><span className="text-xs text-soot/70">{findCentre(r.p.centreId).code}</span></Td>
+                <Td><span className="text-xs text-soot/80">{findCentre(r.p.centreId).code}</span></Td>
                 <Td><Badge tone={stageTone(r.stage)}>{r.stage ? `Stage ${r.stage}` : "—"}</Badge></Td>
                 <Td align="center">
                   <div className="mx-auto w-20">
                     <Progress value={r.pct} tone={r.pct >= 80 ? "info" : r.pct >= 50 ? "warn" : "bad"} />
-                    <span className="mt-1 block text-[10px] tabular-nums text-soot/60">{r.pct}%</span>
+                    <span className="mt-1 block text-[12px] tabular-nums text-soot/75">{r.pct}%</span>
                   </div>
                 </Td>
-                <Td align="right"><span className="text-xs text-soot/70">{fmtDate(r.updated)}</span></Td>
+                <Td align="right"><span className="text-xs text-soot/80">{fmtDate(r.updated)}</span></Td>
               </tr>
             ))}
           </Table>
 
           {pages > 1 && (
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-xs text-soot/60">
+              <p className="text-xs text-soot/75">
                 Showing {(Math.min(page, pages) - 1) * perPage + 1}–{Math.min(Math.min(page, pages) * perPage, filtered.length)} of {filtered.length}
               </p>
               <div className="flex gap-2">

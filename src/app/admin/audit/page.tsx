@@ -9,7 +9,7 @@ import { CENTRES, findCentre } from "@/lib/centres";
 import { fmtDateTime, download, toCsv } from "@/lib/format";
 import { Badge, Card, EmptyState, PageHeader, Stat, Table, Td, Th, Toast } from "@/components/ui";
 
-const ACTIONS = ["create", "update", "delete", "view", "export", "signin", "signout"] as const;
+const ACTIONS = ["create", "update", "delete", "view", "export", "request", "approve", "reject", "signin", "signout"] as const;
 
 export default function AuditPage() {
   useTitle("Audit trail");
@@ -70,7 +70,7 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
+    <div>
       <PageHeader
         title="Audit trail"
         subtitle="Immutable. Every creation, modification, deletion and export is recorded."
@@ -126,10 +126,10 @@ export default function AuditPage() {
           } minWidth={980}>
             {view.map((a) => (
               <tr key={a.id} className="hover:bg-cream/50">
-                <Td><span className="whitespace-nowrap text-[11px] tabular-nums text-soot/70">{fmtDateTime(a.at)}</span></Td>
+                <Td><span className="whitespace-nowrap text-[13px] tabular-nums text-soot/80">{fmtDateTime(a.at)}</span></Td>
                 <Td>
                   <span className="block text-xs font-medium text-ink">{a.userEmail}</span>
-                  <span className="text-[10px] text-soot/55">{ROLE_LABELS[a.userRole]} · {findCentre(a.centreId).code}</span>
+                  <span className="text-[12px] text-soot/72">{ROLE_LABELS[a.userRole]} · {findCentre(a.centreId).code}</span>
                 </Td>
                 <Td align="center">
                   <Badge tone={a.action === "create" ? "ok" : a.action === "delete" ? "bad" : a.action === "export" ? "gold" : "info"}>
@@ -138,21 +138,21 @@ export default function AuditPage() {
                 </Td>
                 <Td>
                   <span className="text-xs text-ink">{a.entityLabel}</span>
-                  <span className="ml-1 text-[10px] text-soot/45">{a.entity}</span>
+                  <span className="ml-1 text-[12px] text-soot/65">{a.entity}</span>
                 </Td>
                 <Td>
                   {a.changes?.length ? (
                     <ul className="space-y-0.5">
                       {a.changes.slice(0, 3).map((c, i) => (
-                        <li key={i} className="text-[11px] text-soot">
+                        <li key={i} className="text-[13px] text-soot">
                           <span className="font-medium text-ink">{c.field}</span>
-                          <span className="mx-1 text-soot/40">{c.from || "—"} →</span>
+                          <span className="mx-1 text-soot/60">{c.from || "—"} →</span>
                           <span className="font-medium text-forest-600">{c.to || "—"}</span>
                         </li>
                       ))}
-                      {a.changes.length > 3 && <li className="text-[10px] text-soot/50">+{a.changes.length - 3} more</li>}
+                      {a.changes.length > 3 && <li className="text-[12px] text-soot/70">+{a.changes.length - 3} more</li>}
                     </ul>
-                  ) : <span className="text-[11px] text-soot/40">—</span>}
+                  ) : <span className="text-[13px] text-soot/60">—</span>}
                 </Td>
               </tr>
             ))}
@@ -160,7 +160,7 @@ export default function AuditPage() {
 
           {pages > 1 && (
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-xs text-soot/60">
+              <p className="text-xs text-soot/75">
                 Page {Math.min(page, pages)} of {pages} · {rows.length} entries
               </p>
               <div className="flex gap-2">

@@ -7,7 +7,7 @@ import { useScoped, usePatientMap } from "@/lib/useScoped";
 import { CENTRES } from "@/lib/centres";
 import { requiredFieldIds } from "@/lib/parameters";
 import { completeness, deriveStage, cciScore, STAGE_ORDER } from "@/lib/staging";
-import { canExport } from "@/lib/access";
+import { exportNeedsApproval } from "@/lib/access";
 import { ageFrom, toCsv, download } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import { BarChart, Card, CHART, DonutChart, HBar, PageHeader, RangeFilter, RANGE_MS, SectionTitle, Stat, Table, Td, Th, Toast, type TimeRange } from "@/components/ui";
@@ -133,7 +133,7 @@ export default function ReportsPage() {
   const pctOf = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "—");
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
+    <div>
       <PageHeader
         title="Reports"
         subtitle={`${eps.length} episodes · ${patients.length} patients in scope`}
@@ -144,8 +144,8 @@ export default function ReportsPage() {
               <option value="all">All centres</option>
               {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            {canExport(session) && <button onClick={exportSummary} className="btn-secondary">Export summary</button>}
-            {canExport(session) && <Link href="/reports/export" className="btn-primary">Data export</Link>}
+            {!exportNeedsApproval(session) && <button onClick={exportSummary} className="btn-secondary">Export summary</button>}
+            <Link href="/reports/export" className="btn-primary">Data export</Link>
           </>
         }
       />
@@ -174,7 +174,7 @@ export default function ReportsPage() {
                 d.label === "n/d" ? CHART.other
                   : ramp(stageData.length <= 1 ? 1 : i / (stageData.length - 1))}
             />
-          ) : <p className="py-8 text-center text-sm text-soot/60">No data.</p>}
+          ) : <p className="py-8 text-center text-sm text-soot/75">No data.</p>}
         </Card>
         <Card>
           <SectionTitle>Age distribution</SectionTitle>
@@ -218,14 +218,14 @@ export default function ReportsPage() {
           {byCentreTable.map((r) => (
             <tr key={r.centre.id} className="hover:bg-cream/50">
               <Td><span className="font-medium text-ink">{r.centre.name}</span>
-                <span className="ml-2 text-[11px] text-soot/55">{r.centre.state}</span></Td>
+                <span className="ml-2 text-[13px] text-soot/72">{r.centre.state}</span></Td>
               <Td align="center"><span className="tabular-nums">{r.episodes}</span></Td>
               <Td align="center"><span className="tabular-nums">{r.resections}</span></Td>
               <Td align="center"><span className="tabular-nums">{r.mis}</span></Td>
               <Td align="center"><span className="tabular-nums">{r.avgComplete}%</span></Td>
             </tr>
           ))}
-          {byCentreTable.length === 0 && <tr><Td><span className="text-sm text-soot/60">No data in scope.</span></Td></tr>}
+          {byCentreTable.length === 0 && <tr><Td><span className="text-sm text-soot/75">No data in scope.</span></Td></tr>}
         </Table>
       </div>
 

@@ -37,7 +37,7 @@ function FieldInput({ f, value, onChange, disabled }: {
       <div className="relative">
         <input type="number" className="input pr-12" value={String(v)} disabled={disabled}
           onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))} />
-        {f.unit && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-soot/50">{f.unit}</span>}
+        {f.unit && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-soot/70">{f.unit}</span>}
       </div>
     );
   }
@@ -55,10 +55,10 @@ function ComputedField({ f, data, patient }: { f: Field; data: EpisodeData; pati
     const s = deriveStage(data);
     return (
       <div className="rounded-xl border border-line bg-cream/60 px-3 py-2.5">
-        <Badge tone={stageTone(s.stage)} className="text-[13px] !px-2.5 !py-1">
+        <Badge tone={stageTone(s.stage)} className="text-[15px] !px-2.5 !py-1">
           {s.stage ? `Stage ${s.stage}` : "Not derivable"}
         </Badge>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-soot/70">{s.reason}</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-soot/80">{s.reason}</p>
       </div>
     );
   }
@@ -67,7 +67,7 @@ function ComputedField({ f, data, patient }: { f: Field; data: EpisodeData; pati
     return (
       <div className="rounded-xl border border-line bg-cream/60 px-3 py-2.5">
         <span className="text-sm font-bold text-ink">{n ?? "—"}</span>
-        {n && <span className="ml-2 text-[11px] text-soot/60">{pnRule(n)}</span>}
+        {n && <span className="ml-2 text-[13px] text-soot/75">{pnRule(n)}</span>}
       </div>
     );
   }
@@ -92,7 +92,7 @@ function ComputedField({ f, data, patient }: { f: Field; data: EpisodeData; pati
           </Badge>
         </div>
         {breakdown.length > 0 && (
-          <p className="mt-1.5 text-[11px] leading-relaxed text-soot/65">
+          <p className="mt-1.5 text-[13px] leading-relaxed text-soot/78">
             {breakdown.map((b) => `${b.label} +${b.points}`).join(" · ")}
           </p>
         )}
@@ -115,7 +115,7 @@ export function GroupCard({ group, data, patient, onChange, readOnly }: {
           {f.type === "computed"
             ? <ComputedField f={f} data={data} patient={patient} />
             : <FieldInput f={f} value={data[f.id] ?? ""} onChange={(v) => onChange(f.id, v)} disabled={readOnly} />}
-          {f.help && <p className="mt-1 text-[11px] text-soot/55">{f.help}</p>}
+          {f.help && <p className="mt-1 text-[13px] text-soot/72">{f.help}</p>}
         </div>
       ))}
     </div>
@@ -156,13 +156,13 @@ export function EpisodeForm({ cancerType, data, patient, onChange, readOnly, onE
         <Card padded={false} className="overflow-hidden">
           <div className="border-b border-line px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-soot/60">Completeness</span>
+              <span className="text-[13px] font-bold text-soot/75">Completeness</span>
               <span className="text-sm font-bold tabular-nums text-ink">{comp.pct}%</span>
             </div>
             <div className="mt-1.5">
               <Progress value={comp.pct} tone={comp.pct >= 80 ? "info" : comp.pct >= 50 ? "warn" : "bad"} />
             </div>
-            <p className="mt-1.5 text-[10px] text-soot/55">
+            <p className="mt-1.5 text-[12px] text-soot/72">
               {comp.filled}/{comp.total} fields · nothing is mandatory
             </p>
           </div>
@@ -176,8 +176,8 @@ export function EpisodeForm({ cancerType, data, patient, onChange, readOnly, onE
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4.5 4.5L19 7" /></svg>
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium text-soot/70">1 · Demography</span>
-                <span className="block text-[10px] text-soot/45">On the patient record</span>
+                <span className="block truncate text-xs font-medium text-soot/80">1 · Demography</span>
+                <span className="block text-[12px] text-soot/65">On the patient record</span>
               </span>
             </button>
 
@@ -191,11 +191,11 @@ export function EpisodeForm({ cancerType, data, patient, onChange, readOnly, onE
                   className={"flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors " +
                     (isCurrent ? "bg-forest-50" : "hover:bg-cream")}
                 >
-                  <span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold " +
+                  <span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold " +
                     (isCurrent ? "bg-forest-500 text-white"
                       : st.pct === 100 ? "bg-sage-100 text-sage-700"
                       : st.pct > 0 ? "bg-gold-100 text-gold-600"
-                      : "bg-cream text-soot/50")}>
+                      : "bg-cream text-soot/70")}>
                     {st.pct === 100 && !isCurrent
                       ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4.5 4.5L19 7" /></svg>
                       : g.no}
@@ -205,7 +205,7 @@ export function EpisodeForm({ cancerType, data, patient, onChange, readOnly, onE
                       {g.no} · {g.title}
                     </span>
                   </span>
-                  <span className="text-[10px] tabular-nums text-soot/45">{st.filled}/{st.total}</span>
+                  <span className="text-[12px] tabular-nums text-soot/65">{st.filled}/{st.total}</span>
                 </button>
               );
             })}
@@ -228,7 +228,7 @@ export function EpisodeForm({ cancerType, data, patient, onChange, readOnly, onE
           <Card>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
               <div>
-                <p className="text-[11px] font-bold text-soot/55">
+                <p className="text-[13px] font-bold text-soot/72">
                   Group {current.no} of {TOTAL}
                 </p>
                 <h3 className="mt-0.5 font-display text-lg font-bold text-ink">{current.title}</h3>
@@ -267,7 +267,7 @@ export function EpisodeForm({ cancerType, data, patient, onChange, readOnly, onE
             {groups.map((g) => (
               <Card key={g.id}>
                 <h3 className="mb-4 border-b border-line pb-2.5 font-display text-base font-bold text-ink">
-                  <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-forest-50 text-[11px] font-bold text-forest-500">{g.no}</span>
+                  <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-forest-50 text-[13px] font-bold text-forest-500">{g.no}</span>
                   {g.title}
                 </h3>
                 <GroupCard group={g} data={data} patient={patient} onChange={onChange} readOnly={readOnly} />

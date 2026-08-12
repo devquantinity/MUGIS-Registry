@@ -11,6 +11,7 @@ import { completeness, deriveStage, STAGE_ORDER, stageTone } from "@/lib/staging
 import { scopeLabel } from "@/lib/access";
 import { fmtDate, relTime, ageSex } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
+import { useExportAlerts } from "@/lib/useExportAlerts";
 import { useStore } from "@/lib/store";
 import { AreaChart, Badge, BarChart, Card, CHART, DonutChart, PageHeader, Progress, RangeFilter, RANGE_MS, SectionTitle, Stat, Table, Td, Th, type TimeRange } from "@/components/ui";
 
@@ -30,6 +31,7 @@ const TILE_ICONS = {
 export default function DashboardPage() {
   useTitle("Overview");
   const { ramp } = useTheme();
+  const { toApprove, myDecided } = useExportAlerts();
   const { patients, episodes, session } = useScoped();
   const { state } = useStore();
   const pmap = usePatientMap();
@@ -147,7 +149,7 @@ export default function DashboardPage() {
   if (!session) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
+    <div>
       <PageHeader
         title="Overview"
         subtitle={`${findCentre(session.centreId).name} · ${scopeLabel(session.role)}`}
@@ -162,6 +164,50 @@ export default function DashboardPage() {
           </>
         }
       />
+
+      {toApprove.length > 0 && (
+        <Link href="/admin/approvals"
+          className="mb-3 flex flex-wrap items-center gap-3 rounded-[14px] border border-gold-300 bg-gold-100/80 px-4 py-3 transition-colors hover:bg-gold-100">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-500 opacity-70" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-gold-500" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink">
+              {toApprove.length} export {toApprove.length === 1 ? "request needs" : "requests need"} your decision
+            </span>
+            <span className="block text-[13px] text-soot/80">
+              {toApprove[0].requestedByName} asked to release direct identifiers for{" "}
+              {toApprove[0].scopeRecords} records
+              {toApprove.length > 1 ? `, and ${toApprove.length - 1} more` : ""}. Nothing leaves the
+              registry until someone decides.
+            </span>
+          </span>
+          <span className="shrink-0 text-[13px] font-semibold text-forest-600">Review →</span>
+        </Link>
+      )}
+
+      {myDecided && (
+        <Link href="/reports/export"
+          className={"mb-3 flex flex-wrap items-center gap-3 rounded-[14px] border px-4 py-3 transition-colors " +
+            (myDecided.status === "approved"
+              ? "border-sage-600/30 bg-sage-100/80 hover:bg-sage-100"
+              : "border-danger-200 bg-danger-50/80 hover:bg-danger-50")}>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink">
+              {myDecided.ref} was {myDecided.status === "approved" ? "approved" : "refused"} by {myDecided.decidedByName}
+            </span>
+            <span className="block text-[13px] text-soot/80">
+              {myDecided.status === "approved"
+                ? "Single use — take the extract before the window closes."
+                : myDecided.decisionNote}
+            </span>
+          </span>
+          <span className="shrink-0 text-[13px] font-semibold text-forest-600">
+            {myDecided.status === "approved" ? "Export →" : "Revise →"}
+          </span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Patients" value={patients.length} chip={windows.patients} tone="info" icon={TILE_ICONS.patients} />
@@ -188,12 +234,12 @@ export default function DashboardPage() {
                   : ramp(stageDist.length <= 1 ? 1 : i / (stageDist.length - 1))}
             />
           ) :
-            <p className="py-8 text-center text-sm text-soot/60">No episodes to chart yet.</p>}
+            <p className="py-8 text-center text-sm text-soot/75">No episodes to chart yet.</p>}
         </Card>
         <Card className="min-w-0 xl:col-span-3">
           <SectionTitle>Surgical approach</SectionTitle>
           {byApproach.length ? <DonutChart data={byApproach} unit="operations" size={126} stacked /> :
-            <p className="py-8 text-center text-sm text-soot/60">No operative data yet.</p>}
+            <p className="py-8 text-center text-sm text-soot/75">No operative data yet.</p>}
         </Card>
       </div>
 
@@ -203,14 +249,14 @@ export default function DashboardPage() {
             Episodes by centre
           </SectionTitle>
           {byCentre.length ? <BarChart data={byCentre} height={150} /> :
-            <p className="py-6 text-center text-sm text-soot/60">No diagnoses in this window.</p>}
+            <p className="py-6 text-center text-sm text-soot/75">No diagnoses in this window.</p>}
         </Card>
         <Card>
           <SectionTitle right={<Badge tone="muted">{range === "all" ? "all time" : `last ${range.replace("m", "")} months`}</Badge>}>
             Presenting complaint
           </SectionTitle>
           {byPresentation.length ? <BarChart data={byPresentation} height={150} /> :
-            <p className="py-6 text-center text-sm text-soot/60">No diagnoses in this window.</p>}
+            <p className="py-6 text-center text-sm text-soot/75">No diagnoses in this window.</p>}
         </Card>
       </div>
 
@@ -234,7 +280,7 @@ export default function DashboardPage() {
                   <Td><Link href={`/episodes/${e.id}`} className="font-semibold text-forest-500 hover:underline">{p?.registryNo ?? "—"}</Link></Td>
                   <Td>
                     <span className="font-medium text-ink">{p?.fullName ?? "—"}</span>
-                    <span className="ml-2 text-[11px] text-soot/55">
+                    <span className="ml-2 text-[13px] text-soot/72">
                       {p ? ageSex(p.dob, p.sex) : ""}
                     </span>
                   </Td>
@@ -242,16 +288,16 @@ export default function DashboardPage() {
                   <Td align="center">
                     <div className="mx-auto w-24">
                       <Progress value={c.pct} tone={c.pct >= 80 ? "info" : c.pct >= 50 ? "warn" : "bad"} />
-                      <span className="mt-1 block text-[10px] tabular-nums text-soot/60">{c.pct}%</span>
+                      <span className="mt-1 block text-[12px] tabular-nums text-soot/75">{c.pct}%</span>
                     </div>
                   </Td>
-                  <Td><span className="text-xs text-soot/70">{relTime(e.updatedAt, NOW)}</span></Td>
+                  <Td><span className="text-xs text-soot/80">{relTime(e.updatedAt, NOW)}</span></Td>
                 </tr>
               );
             })}
           </Table>
         ) : (
-          <Card><p className="py-6 text-center text-sm text-soot/60">No episodes visible to you yet.</p></Card>
+          <Card><p className="py-6 text-center text-sm text-soot/75">No episodes visible to you yet.</p></Card>
         )}
       </div>
 
@@ -265,11 +311,11 @@ export default function DashboardPage() {
                   {a.action}
                 </Badge>
                 <span className="flex-1 truncate text-sm text-ink">{a.entityLabel}</span>
-                <span className="hidden text-[11px] text-soot/55 sm:inline">{a.userEmail}</span>
-                <span className="text-[11px] tabular-nums text-soot/50">{fmtDate(a.at)}</span>
+                <span className="hidden text-[13px] text-soot/72 sm:inline">{a.userEmail}</span>
+                <span className="text-[13px] tabular-nums text-soot/70">{fmtDate(a.at)}</span>
               </li>
             ))}
-            {myAudit.length === 0 && <li className="px-4 py-6 text-center text-sm text-soot/60">No activity recorded.</li>}
+            {myAudit.length === 0 && <li className="px-4 py-6 text-center text-sm text-soot/75">No activity recorded.</li>}
           </ul>
         </Card>
       </div>
