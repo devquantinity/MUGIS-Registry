@@ -140,8 +140,9 @@ export default function ApprovalsPage() {
         <PageHeader title="Export approvals" />
         <Card>
           <p className="text-sm leading-relaxed text-soot">
-            Only an administrator, HOD or Head of Service can release direct
-            identifiers. Your own requests appear on the Data export page.
+            Only a Head of Department can release direct identifiers — not the
+            system administrator, and not the Head of Service. Your own
+            requests appear on the Data export page.
           </p>
         </Card>
       </div>

@@ -10,6 +10,7 @@ import { useSession, ROLE_LABELS } from "@/lib/session";
 import { canEdit } from "@/lib/access";
 import { findCentre } from "@/lib/centres";
 import { ETHNIC, STATES, requiredFieldIds } from "@/lib/parameters";
+import { Select, opts } from "@/components/Select";
 import { cancerLabel } from "@/lib/types";
 import { completeness, deriveStage, cciScore, stageTone } from "@/lib/staging";
 import { ageFrom, fmtDate, fmtDateTime, formatMykad, maskMykad } from "@/lib/format";
@@ -231,23 +232,30 @@ export default function PatientDetailPage() {
             </div>
             <div>
               <label className="label">Sex</label>
-              <select className="input" value={form.sex} onChange={(e) => setForm({ ...form, sex: e.target.value as "Male" | "Female" })}>
-                <option value="Female">Female</option><option value="Male">Male</option>
-              </select>
+              <Select
+                ariaLabel="Sex"
+                value={form.sex}
+                onChange={(v) => setForm({ ...form, sex: v as "Male" | "Female" })}
+                options={[{ value: "Female", label: "Female" }, { value: "Male", label: "Male" }]}
+              />
             </div>
             <div>
               <label className="label">Ethnic</label>
-              <select className="input" value={form.ethnic} onChange={(e) => setForm({ ...form, ethnic: e.target.value })}>
-                <option value="">— select —</option>
-                {ETHNIC.map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
+              <Select
+                ariaLabel="Ethnic"
+                value={form.ethnic}
+                onChange={(v) => setForm({ ...form, ethnic: v })}
+                options={opts(ETHNIC)}
+              />
             </div>
             <div>
               <label className="label">State</label>
-              <select className="input" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })}>
-                <option value="">— select —</option>
-                {STATES.map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
+              <Select
+                ariaLabel="State"
+                value={form.state}
+                onChange={(v) => setForm({ ...form, state: v })}
+                options={opts(STATES)}
+              />
             </div>
             <div className="mt-2 flex gap-2 sm:col-span-2">
               <button onClick={saveEdit} className="btn-primary">Save changes</button>

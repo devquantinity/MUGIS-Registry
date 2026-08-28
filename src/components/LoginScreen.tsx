@@ -6,6 +6,7 @@ import { CENTRES } from "@/lib/centres";
 import { seedUsers } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { ROLE_LABELS, useSession } from "@/lib/session";
+import { Select } from "@/components/Select";
 
 /* ---- inline icons ---------------------------------------------------- */
 const Shield = ({ className = "" }: { className?: string }) => (
@@ -287,18 +288,15 @@ export default function LoginScreen() {
 
                 <div className="mt-6">
                   <label htmlFor="centre" className="label">Centre</label>
-                  <select
+                  <Select
                     id="centre"
-                    className="input"
+                    ariaLabel="Centre"
                     value={centreId}
-                    onChange={(e) => onCentre(e.target.value)}
-                  >
-                    {CENTRES.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.code})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={onCentre}
+                    options={CENTRES.map((c) => ({
+                      value: c.id, label: c.name, hint: c.code,
+                    }))}
+                  />
                 </div>
 
                 <div className="mt-4">

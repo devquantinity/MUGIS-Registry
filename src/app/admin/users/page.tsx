@@ -8,6 +8,7 @@ import { canAdmin, scopeLabel } from "@/lib/access";
 import { CENTRES, findCentre } from "@/lib/centres";
 import { fmtDateTime, relTime } from "@/lib/format";
 import { Badge, Card, Modal, PageHeader, Stat, Table, Td, Th, Toast } from "@/components/ui";
+import { Select } from "@/components/Select";
 
 const NOW = new Date("2026-08-08T09:00:00Z").getTime();
 
@@ -78,10 +79,17 @@ export default function AdminUsersPage() {
           </div>
           <div>
             <label className="label">Role</label>
-            <select className="input" value={roleF} onChange={(e) => setRoleF(e.target.value)}>
-              <option value="all">All roles</option>
-              {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-            </select>
+            <Select
+              ariaLabel="Filter by role"
+              value={roleF}
+              onChange={setRoleF}
+              options={[
+                { value: "all", label: "All roles" },
+                ...(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({
+                  value: r, label: ROLE_LABELS[r],
+                })),
+              ]}
+            />
           </div>
         </div>
       </Card>
@@ -95,10 +103,17 @@ export default function AdminUsersPage() {
             <Td><span className="font-medium text-ink">{u.name}</span></Td>
             <Td><span className="text-xs text-soot">{u.email}</span></Td>
             <Td>
-              <select className="input !py-1 !text-xs" value={u.role}
-                onChange={(e) => { updateUser(session, u.id, { role: e.target.value as Role }); setToast(`${u.name} is now ${ROLE_LABELS[e.target.value as Role]}`); }}>
-                {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
+              <Select
+                size="sm"
+                menuWidth={340}
+                heading="Change role"
+                ariaLabel={`Role for ${u.name}`}
+                value={u.role}
+                onChange={(v) => { updateUser(session, u.id, { role: v as Role }); setToast(`${u.name} is now ${ROLE_LABELS[v as Role]}`); }}
+                options={(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({
+                  value: r, label: ROLE_LABELS[r], hint: scopeLabel(r),
+                }))}
+              />
               <span className="mt-1 block text-[12px] text-soot/72">{scopeLabel(u.role)}</span>
             </Td>
             <Td><Badge tone="muted">{findCentre(u.centreId).code}</Badge></Td>
@@ -110,10 +125,18 @@ export default function AdminUsersPage() {
               </button>
             </Td>
             <Td align="center">
-              <select className="input !py-1 !text-xs" value={u.status}
-                onChange={(e) => { updateUser(session, u.id, { status: e.target.value as "active" | "invited" | "suspended" }); setToast(`${u.name} — ${e.target.value}`); }}>
-                <option value="active">Active</option><option value="invited">Invited</option><option value="suspended">Suspended</option>
-              </select>
+              <Select
+                size="sm"
+                menuWidth={180}
+                ariaLabel={`Status for ${u.name}`}
+                value={u.status}
+                onChange={(v) => { updateUser(session, u.id, { status: v as "active" | "invited" | "suspended" }); setToast(`${u.name} — ${v}`); }}
+                options={[
+                  { value: "active", label: "Active" },
+                  { value: "invited", label: "Invited" },
+                  { value: "suspended", label: "Suspended" },
+                ]}
+              />
             </Td>
             <Td align="right"><span className="text-xs text-soot/80" title={fmtDateTime(u.lastActive)}>{relTime(u.lastActive, NOW)}</span></Td>
           </tr>
@@ -129,14 +152,23 @@ export default function AdminUsersPage() {
             <input className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@hospital.gov.my" /></div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><label className="label">Role</label>
-              <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
-                {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
+              <Select
+                ariaLabel="Role"
+                value={form.role}
+                onChange={(v) => setForm({ ...form, role: v as Role })}
+                options={(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({
+                  value: r, label: ROLE_LABELS[r], hint: scopeLabel(r),
+                }))}
+                menuWidth={340}
+              />
               <p className="mt-1 text-[13px] text-soot/75">{scopeLabel(form.role)}</p></div>
             <div><label className="label">Centre</label>
-              <select className="input" value={form.centreId} onChange={(e) => setForm({ ...form, centreId: e.target.value })}>
-                {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select></div>
+              <Select
+                ariaLabel="Centre"
+                value={form.centreId}
+                onChange={(v) => setForm({ ...form, centreId: v })}
+                options={CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code }))}
+              /></div>
           </div>
           <p className="rounded-xl border border-line bg-cream px-3 py-2 text-[13px] leading-relaxed text-soot/80">
             The user receives an invitation link, sets their own password and enrols an

@@ -120,7 +120,7 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
       </button>
 
       {open && !disabled && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[278px] rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 p-3 shadow-raised backdrop-blur-xl">
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[278px] rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-3 shadow-raised">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" onClick={() => setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))}
               className="rounded-lg p-1.5 text-soot/75 hover:bg-cream hover:text-ink" aria-label="Previous month">

@@ -3,7 +3,7 @@
  *
  * IMPORTANT: the AJCC tables below are implemented from the AJCC 8th edition
  * pathological staging for gastric cancer. They must be reviewed and signed
- * off by a MUGIS consultant before go-live. Quantyr implements the tables;
+ * off by a MUGIS consultant before go-live. Gotka implements the tables;
  * clinical correctness remains a MUGIS responsibility.
  */
 import type { EpisodeData } from "@/lib/types";

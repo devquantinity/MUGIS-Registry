@@ -15,6 +15,7 @@ import { ageFrom, download, toCsv } from "@/lib/format";
 import { makeXlsx, downloadBlob } from "@/lib/xlsx";
 import { printPdf } from "@/lib/pdf";
 import { Badge, Card, Check, Field, Modal, PageHeader, RunButton, SectionTitle, Toast, type ToastData } from "@/components/ui";
+import { Select, opts } from "@/components/Select";
 
 export default function ExportPage() {
   useTitle("Data export");
@@ -231,10 +232,15 @@ export default function ExportPage() {
           <Card>
             <SectionTitle>Scope</SectionTitle>
             <label className="label">Centre</label>
-            <select className="input" value={centre} onChange={(e) => setCentre(e.target.value)}>
-              <option value="all">All centres in your scope</option>
-              {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select
+              ariaLabel="Centre"
+              value={centre}
+              onChange={setCentre}
+              options={[
+                { value: "all", label: "All centres in your scope" },
+                ...CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code })),
+              ]}
+            />
 
             <label className="label mt-4">Format</label>
             <div className="grid grid-cols-2 gap-2">
@@ -286,9 +292,9 @@ export default function ExportPage() {
                         <>
                           <Badge tone="warn">Awaiting approval · {myPending.ref}</Badge>
                           <p className="mt-1.5 text-[13px] leading-relaxed text-soot/80">
-                            Submitted {relTime(myPending.requestedAt, Date.now())}. An
-                            administrator, HOD or Head of Service has to release it.
-                            You can still export without identifiers in the meantime.
+                            Submitted {relTime(myPending.requestedAt, Date.now())}. A
+                            Head of Department has to release it. You can still
+                            export without identifiers in the meantime.
                           </p>
                         </>
                       ) : (
@@ -389,7 +395,7 @@ export default function ExportPage() {
               )}
               {needsApproval && !approval && !myPending && (
                 <p className="mt-2 text-center text-[13px] leading-relaxed text-soot/75">
-                  Your role assembles extracts; a HOD or Head of Service releases them.
+                  Your role assembles extracts; a Head of Department releases them.
                 </p>
               )}
             </div>
@@ -441,15 +447,19 @@ export default function ExportPage() {
       <Modal open={askOpen} onClose={() => setAskOpen(false)} title="Request release of direct identifiers">
         <p className="text-sm leading-relaxed text-soot">
           Names, MyKad numbers and dates of birth are personal data under the PDPA.
-          State why they are needed — an administrator, HOD or Head of Service
-          reviews this before anything is released, and cannot approve their own request.
+          State why they are needed — a Head of Department reviews this before
+          anything is released, and cannot approve their own request.
         </p>
 
         <div className="mt-4 space-y-4">
           <Field label="Lawful basis" required>
-            <select className="input" value={basis} onChange={(e) => setBasis(e.target.value as LegalBasis)}>
-              {LEGAL_BASIS.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
+            <Select
+              ariaLabel="Lawful basis"
+              value={basis}
+              onChange={(v) => setBasis(v as LegalBasis)}
+              options={opts(LEGAL_BASIS)}
+              menuWidth={360}
+            />
           </Field>
 
           {basis === "Ethics-approved research protocol" && (
@@ -467,12 +477,17 @@ export default function ExportPage() {
           </Field>
 
           <Field label="Retention" hint="How long the extract is kept before destruction.">
-            <select className="input" value={retention} onChange={(e) => setRetention(Number(e.target.value))}>
-              <option value={7}>7 days</option>
-              <option value={30}>30 days</option>
-              <option value={90}>90 days</option>
-              <option value={365}>12 months</option>
-            </select>
+            <Select
+              ariaLabel="Retention"
+              value={String(retention)}
+              onChange={(v) => setRetention(Number(v))}
+              options={[
+                { value: "7", label: "7 days" },
+                { value: "30", label: "30 days" },
+                { value: "90", label: "90 days" },
+                { value: "365", label: "12 months" },
+              ]}
+            />
           </Field>
 
           <div className="rounded-xl border border-line bg-cream px-3 py-2.5">
@@ -504,7 +519,7 @@ export default function ExportPage() {
               setToast({
                 tone: "info",
                 title: "Request sent for approval",
-                body: `An administrator, HOD or Head of Service will review it. You can still take the de-identified extract while you wait.`,
+                body: `A Head of Department will review it. You can still take the de-identified extract while you wait.`,
                 ref: r.ref,
                 duration: 7000,
               });

@@ -200,7 +200,7 @@ const NAV: NavGroup[] = [
         href: "/admin/approvals",
         label: "Export Approvals",
         icon: ic(ICONS.approvals),
-        roles: ["admin", "head", "hod"],
+        roles: ["hod"],
       },
       { href: "/admin/users", label: "Users", icon: ic(ICONS.users), roles: ["admin"] },
       { href: "/admin/centres", label: "Centres", icon: ic(ICONS.centres), roles: ["admin"] },
@@ -700,7 +700,7 @@ function RoleSwitcher() {
         <span className="text-soot/65">{ic(ICONS.chevron, 12)}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[340px] overflow-hidden rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 p-1.5 shadow-raised backdrop-blur-xl">
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[340px] overflow-hidden rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-1.5 shadow-raised">
           <p className="px-2.5 pb-1.5 pt-1 text-[12px] font-semibold uppercase tracking-wide text-soot/70">View the registry as</p>
           {(Object.keys(ROLE_LABELS) as Role[]).map((r) => {
             const active = r === session.role;

@@ -11,6 +11,7 @@ import { exportNeedsApproval } from "@/lib/access";
 import { ageFrom, toCsv, download } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import { BarChart, Card, CHART, DonutChart, HBar, PageHeader, RangeFilter, RANGE_MS, SectionTitle, Stat, Table, Td, Th, Toast, type TimeRange } from "@/components/ui";
+import { Select } from "@/components/Select";
 
 function tally(items: string[]): { label: string; value: number }[] {
   const m = new Map<string, number>();
@@ -140,10 +141,18 @@ export default function ReportsPage() {
         actions={
           <>
             <RangeFilter value={range} onChange={setRange} />
-            <select className="input !w-auto !py-1.5 text-xs" value={centre} onChange={(e) => setCentre(e.target.value)}>
-              <option value="all">All centres</option>
-              {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select
+              className="!w-auto"
+              size="sm"
+              ariaLabel="Filter by centre"
+              value={centre}
+              onChange={setCentre}
+              options={[
+                { value: "all", label: "All centres" },
+                ...CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code })),
+              ]}
+              menuWidth={280}
+            />
             {!exportNeedsApproval(session) && <button onClick={exportSummary} className="btn-secondary">Export summary</button>}
             <Link href="/reports/export" className="btn-primary">Data export</Link>
           </>

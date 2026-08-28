@@ -8,6 +8,7 @@ import { canSeeAudit } from "@/lib/access";
 import { CENTRES, findCentre } from "@/lib/centres";
 import { fmtDateTime, download, toCsv } from "@/lib/format";
 import { Badge, Card, EmptyState, PageHeader, Stat, Table, Td, Th, Toast } from "@/components/ui";
+import { Select, opts } from "@/components/Select";
 
 const ACTIONS = ["create", "update", "delete", "view", "export", "request", "approve", "reject", "signin", "signout"] as const;
 
@@ -93,25 +94,39 @@ export default function AuditPage() {
           </div>
           <div>
             <label className="label">Action</label>
-            <select className="input" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }}>
-              <option value="all">All actions</option>
-              {ACTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
+            <Select
+              ariaLabel="Filter by action"
+              value={action}
+              onChange={(v) => { setAction(v); setPage(1); }}
+              options={[{ value: "all", label: "All actions" }, ...opts(ACTIONS)]}
+            />
           </div>
           <div>
             <label className="label">Entity</label>
-            <select className="input" value={entity} onChange={(e) => { setEntity(e.target.value); setPage(1); }}>
-              <option value="all">All</option><option value="patient">Patient</option>
-              <option value="episode">Episode</option><option value="user">User</option>
-              <option value="system">System</option>
-            </select>
+            <Select
+              ariaLabel="Filter by entity"
+              value={entity}
+              onChange={(v) => { setEntity(v); setPage(1); }}
+              options={[
+                { value: "all", label: "All" },
+                { value: "patient", label: "Patient" },
+                { value: "episode", label: "Episode" },
+                { value: "user", label: "User" },
+                { value: "system", label: "System" },
+              ]}
+            />
           </div>
           <div>
             <label className="label">Centre</label>
-            <select className="input" value={centre} onChange={(e) => { setCentre(e.target.value); setPage(1); }}>
-              <option value="all">All centres</option>
-              {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
-            </select>
+            <Select
+              ariaLabel="Filter by centre"
+              value={centre}
+              onChange={(v) => { setCentre(v); setPage(1); }}
+              options={[
+                { value: "all", label: "All centres" },
+                ...CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code })),
+              ]}
+            />
           </div>
         </div>
       </Card>

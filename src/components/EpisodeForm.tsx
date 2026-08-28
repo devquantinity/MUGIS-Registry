@@ -7,6 +7,7 @@ import type { EpisodeData, Patient } from "@/lib/types";
 import { bmi, bmiBand, cciScore, completeness, computedValue, deriveStage, derivePN, pnRule, stageTone } from "@/lib/staging";
 import { Badge, Card, Progress } from "@/components/ui";
 import { DatePicker } from "@/components/DatePicker";
+import { Select } from "@/components/Select";
 
 function visible(f: Field, d: EpisodeData): boolean {
   if (!f.showIf) return true;
@@ -19,11 +20,17 @@ function FieldInput({ f, value, onChange, disabled }: {
   const v = value ?? "";
   if (f.type === "select") {
     return (
-      <select className="input" value={String(v)} disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}>
-        <option value="">— not recorded —</option>
-        {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
+      <Select
+        value={String(v)}
+        disabled={disabled}
+        placeholder="— not recorded —"
+        ariaLabel={f.label}
+        onChange={(next) => onChange(next)}
+        options={[
+          { value: "", label: "— not recorded —" },
+          ...(f.options ?? []).map((o) => ({ value: o, label: o })),
+        ]}
+      />
     );
   }
   if (f.type === "textarea") {

@@ -4,22 +4,25 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 /**
  * Roles as agreed with MUGIS.
- *  - admin      : full configuration + user management
- *  - clinician  : creates and edits ONLY their own patient records
  *  - hod        : reads every record in their own centre
  *  - head       : reads every record, every centre (Head of Service)
+ *  - clinician  : creates and edits ONLY their own patient records
  *  - researcher : de-identified read + export, nationwide
  *  - trainee    : limited entry + own logbook (logbook ships in Phase 2)
+ *  - admin      : full configuration + user management
+ *
+ * Key order below is the display order of every role dropdown — clinical
+ * roles first, the technical admin role last.
  */
 export type Role = "admin" | "clinician" | "hod" | "head" | "researcher" | "trainee";
 
 export const ROLE_LABELS: Record<Role, string> = {
-  admin: "System Admin",
-  clinician: "Clinician",
   hod: "Head of Department",
   head: "Head of Service",
+  clinician: "Clinician",
   researcher: "Researcher",
   trainee: "Trainee",
+  admin: "System Admin",
 };
 
 export type Session = {

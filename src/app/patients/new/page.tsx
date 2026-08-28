@@ -11,6 +11,7 @@ import { ETHNIC, STATES, schemaFor } from "@/lib/parameters";
 import { hashId, ageFrom, formatMykad, mykadIdentity } from "@/lib/format";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui";
 import { DatePicker } from "@/components/DatePicker";
+import { Select, opts } from "@/components/Select";
 
 export default function NewPatientPage() {
   useTitle("New patient");
@@ -115,31 +116,39 @@ export default function NewPatientPage() {
               </div>
               <div>
                 <label className="label">Sex</label>
-                <select className="input" value={form.sex} onChange={(e) => set("sex")(e.target.value)}>
-                  <option value="">— select —</option>
-                  <option value="Female">Female</option>
-                  <option value="Male">Male</option>
-                </select>
+                <Select
+                  ariaLabel="Sex"
+                  value={form.sex}
+                  onChange={set("sex")}
+                  options={[{ value: "Female", label: "Female" }, { value: "Male", label: "Male" }]}
+                />
               </div>
               <div>
                 <label className="label">Ethnic</label>
-                <select className="input" value={form.ethnic} onChange={(e) => set("ethnic")(e.target.value)}>
-                  <option value="">— select —</option>
-                  {ETHNIC.map((x) => <option key={x} value={x}>{x}</option>)}
-                </select>
+                <Select
+                  ariaLabel="Ethnic"
+                  value={form.ethnic}
+                  onChange={set("ethnic")}
+                  options={opts(ETHNIC)}
+                />
               </div>
               <div>
                 <label className="label">State</label>
-                <select className="input" value={form.state} onChange={(e) => set("state")(e.target.value)}>
-                  <option value="">— select —</option>
-                  {STATES.map((x) => <option key={x} value={x}>{x}</option>)}
-                </select>
+                <Select
+                  ariaLabel="State"
+                  value={form.state}
+                  onChange={set("state")}
+                  options={opts(STATES)}
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className="label">Centre</label>
-                <select className="input" value={form.centreId} onChange={(e) => set("centreId")(e.target.value)}>
-                  {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-                </select>
+                <Select
+                  ariaLabel="Centre"
+                  value={form.centreId}
+                  onChange={set("centreId")}
+                  options={CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code }))}
+                />
               </div>
             </div>
 

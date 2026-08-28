@@ -11,6 +11,7 @@ import { CANCER_TYPES, cancerShort } from "@/lib/types";
 import { completeness, deriveStage, stageTone } from "@/lib/staging";
 import { fmtDate } from "@/lib/format";
 import { Badge, Card, EmptyState, PageHeader, Progress, Table, Td, Th } from "@/components/ui";
+import { Select } from "@/components/Select";
 
 export default function EpisodesPage() {
   useTitle("Cancer episodes");
@@ -66,17 +67,29 @@ export default function EpisodesPage() {
           </div>
           <div>
             <label className="label">Status</label>
-            <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="all">All</option><option value="draft">Draft</option>
-              <option value="active">Active</option><option value="closed">Closed</option>
-            </select>
+            <Select
+              ariaLabel="Filter by status"
+              value={status}
+              onChange={setStatus}
+              options={[
+                { value: "all", label: "All" },
+                { value: "draft", label: "Draft" },
+                { value: "active", label: "Active" },
+                { value: "closed", label: "Closed" },
+              ]}
+            />
           </div>
           <div>
             <label className="label">Centre</label>
-            <select className="input" value={centre} onChange={(e) => setCentre(e.target.value)}>
-              <option value="all">All centres</option>
-              {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
-            </select>
+            <Select
+              ariaLabel="Filter by centre"
+              value={centre}
+              onChange={setCentre}
+              options={[
+                { value: "all", label: "All centres" },
+                ...CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code })),
+              ]}
+            />
           </div>
         </div>
         <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-soot">

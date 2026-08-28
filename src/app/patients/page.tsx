@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useScoped } from "@/lib/useScoped";
 import { CENTRES, findCentre } from "@/lib/centres";
 import { requiredFieldIds } from "@/lib/parameters";
+import { Select } from "@/components/Select";
 import { completeness, deriveStage, stageTone } from "@/lib/staging";
 import { canCreate, exportNeedsApproval } from "@/lib/access";
 import { ageFrom, fmtDate, maskMykad, toCsv, download } from "@/lib/format";
@@ -161,19 +162,30 @@ export default function PatientsPage() {
           </div>
           <div>
             <label className="label">Centre</label>
-            <select className="input" value={centre} onChange={(e) => { setCentre(e.target.value); setPage(1); }}>
-              <option value="all">All centres</option>
-              {CENTRES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select
+              ariaLabel="Filter by centre"
+              value={centre}
+              onChange={(v) => { setCentre(v); setPage(1); }}
+              options={[
+                { value: "all", label: "All centres" },
+                ...CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code })),
+              ]}
+            />
           </div>
           <div>
             <label className="label">Stage</label>
-            <select className="input" value={stageF} onChange={(e) => { setStageF(e.target.value); setPage(1); }}>
-              <option value="all">All stages</option>
-              {["0", "IA", "IB", "IIA", "IIB", "IIIA", "IIIB", "IIIC", "IV"].map((s) =>
-                <option key={s} value={s}>Stage {s}</option>)}
-              <option value="none">Not derived</option>
-            </select>
+            <Select
+              ariaLabel="Filter by stage"
+              value={stageF}
+              onChange={(v) => { setStageF(v); setPage(1); }}
+              options={[
+                { value: "all", label: "All stages" },
+                ...["0", "IA", "IB", "IIA", "IIB", "IIIA", "IIIB", "IIIC", "IV"].map((s) => ({
+                  value: s, label: `Stage ${s}`,
+                })),
+                { value: "none", label: "Not derived" },
+              ]}
+            />
           </div>
         </div>
       </Card>

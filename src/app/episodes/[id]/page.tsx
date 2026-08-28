@@ -16,6 +16,7 @@ import { cciScore, completeness, deriveStage, stageTone } from "@/lib/staging";
 import { ageSex, fmtDate, fmtDateTime, toCsv, download } from "@/lib/format";
 import { EpisodeForm } from "@/components/EpisodeForm";
 import { Badge, Card, EmptyState, PageHeader, Progress, Toast } from "@/components/ui";
+import { Select } from "@/components/Select";
 
 export default function EpisodePage() {
   useTitle("Episode record");
@@ -126,15 +127,18 @@ export default function EpisodePage() {
           <>
             <button onClick={exportRecord} className="btn-secondary">Export record</button>
             {mine && (
-              <select
-                className="input !w-auto !py-1.5 text-xs"
+              <Select
+                className="!w-auto"
+                size="sm"
+                ariaLabel="Episode status"
                 value={episode.status}
-                onChange={(e) => { setEpisodeStatus(sess, episode.id, e.target.value as "draft" | "active" | "closed"); setToast("Status updated"); }}
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="closed">Closed</option>
-              </select>
+                onChange={(v) => { setEpisodeStatus(sess, episode.id, v as "draft" | "active" | "closed"); setToast("Status updated"); }}
+                options={[
+                  { value: "draft", label: "Draft" },
+                  { value: "active", label: "Active" },
+                  { value: "closed", label: "Closed" },
+                ]}
+              />
             )}
             {mine && (
               <button onClick={save} disabled={dirty.size === 0} className="btn-primary">

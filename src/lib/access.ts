@@ -82,16 +82,23 @@ export function canAdmin(s: Session): boolean {
 }
 
 /**
- * Who may release direct identifiers. Deliberately narrow: the two roles
- * accountable for the registry as a whole, plus the administrator.
+ * Who may release direct identifiers: the Head of Department, and nobody
+ * else.
+ *
+ * The system administrator is deliberately excluded. Administration is a
+ * technical function — it creates accounts, configures centres and keeps the
+ * service running — and releasing identifiable patient data is a clinical
+ * governance decision. Someone who can grant themselves any role should not
+ * also be the person who signs data out of the registry; separating the two
+ * is what makes the audit trail worth reading.
  */
 export function canApproveExport(s: Session): boolean {
-  return s.role === "admin" || s.role === "head" || s.role === "hod";
+  return s.role === "hod";
 }
 
 /**
  * Four-eyes rule — nobody signs off their own request, whatever their role.
- * An admin who needs an identifiable extract still waits for someone else.
+ * A HOD who needs an identifiable extract waits for another HOD.
  */
 export function canDecideOn(s: Session, requesterEmail: string): boolean {
   return canApproveExport(s) && s.email !== requesterEmail;

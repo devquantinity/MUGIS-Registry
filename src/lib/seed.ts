@@ -369,6 +369,9 @@ export function buildSeed() {
   // Export approvals — one waiting on a decision, one granted and still open,
   // one refused. Enough for a reviewer to see the control working both ways.
   const hod = users.find((u) => u.role === "hod")!;
+  // A second Head of Department, at another centre: the four-eyes rule means
+  // a HOD's own request has to be decided by one of their peers.
+  const hod2 = users.find((u) => u.role === "hod" && u.email !== hod.email)!;
   const clinician = users.find((u) => u.role === "clinician")!;
   const exportRequests: ExportRequest[] = [
     {
@@ -390,7 +393,7 @@ export function buildSeed() {
       basis: "Ethics-approved research protocol", ethicsRef: "NMRR-25-01847-XYZ", includesIdentifiers: true,
       scopeCentreId: "all", scopeRecords: 214, scopeGroups: 12,
       format: "csv", retentionDays: 90, status: "approved",
-      decidedBy: head.email, decidedByName: head.name, decidedAt: daysAgo(5),
+      decidedBy: hod.email, decidedByName: hod.name, decidedAt: daysAgo(5),
       decisionNote: "NMRR reference verified against the approval letter. "
         + "Linkage file to be destroyed once matching is complete.",
       expiresAt: inDays(2),
@@ -404,7 +407,7 @@ export function buildSeed() {
       basis: "Internal audit or quality assurance", ethicsRef: "", includesIdentifiers: true,
       scopeCentreId: hod.centreId, scopeRecords: 90, scopeGroups: 12,
       format: "xlsx", retentionDays: 30, status: "rejected",
-      decidedBy: admin.email, decidedByName: admin.name, decidedAt: daysAgo(11),
+      decidedBy: hod2.email, decidedByName: hod2.name, decidedAt: daysAgo(11),
       decisionNote: "No lawful basis to disclose identifiable patient data to a "
         + "commercial third party. Re-submit de-identified if the benchmarking "
         + "still needs to happen.",
@@ -412,11 +415,11 @@ export function buildSeed() {
   ];
 
   audit.push(
-    { id: "a90004", at: daysAgo(5), userEmail: head.email, userRole: "head",
-      centreId: head.centreId, action: "approve", entity: "system", entityId: "x90002",
+    { id: "a90004", at: daysAgo(5), userEmail: hod.email, userRole: "hod",
+      centreId: hod.centreId, action: "approve", entity: "system", entityId: "x90002",
       entityLabel: "EXP-2026-011 — identifiable export approved for " + researcher.name },
-    { id: "a90005", at: daysAgo(11), userEmail: admin.email, userRole: "admin",
-      centreId: admin.centreId, action: "reject", entity: "system", entityId: "x90003",
+    { id: "a90005", at: daysAgo(11), userEmail: hod2.email, userRole: "hod",
+      centreId: hod2.centreId, action: "reject", entity: "system", entityId: "x90003",
       entityLabel: "EXP-2026-009 — identifiable export refused (no lawful basis)" },
     { id: "a90006", at: daysAgo(1), userEmail: clinician.email, userRole: "clinician",
       centreId: clinician.centreId, action: "request", entity: "system", entityId: "x90001",
