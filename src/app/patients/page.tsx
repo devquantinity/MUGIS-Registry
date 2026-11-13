@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
 import { CLINICAL, useSession } from "@/lib/session";
-import { api, errorText, type Centre, type Page, type Patient } from "@/lib/api";
+import { api, errorText, type Page, type Patient } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
 import { ageSex, fmtDate } from "@/lib/format";
 import { Badge, Card, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
@@ -25,16 +25,13 @@ export default function PatientsPage() {
   const [items, setItems] = useState<Patient[] | null>(null);
   const [meta, setMeta] = useState<Page | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [allCentres, setAllCentres] = useState<Centre[]>([]);
 
   const clinical = !!session && CLINICAL.includes(session.role);
-  const isHead = session?.role === "head";
 
-  useEffect(() => { if (isHead) api.centres().then(setAllCentres).catch(() => undefined); }, [isHead]);
   const centreOptions = useMemo(() => {
-    const list = isHead ? allCentres : session?.user.centres ?? [];
+    const list = session?.user.centres ?? [];
     return [{ value: "", label: "All centres" }, ...list.map((c) => ({ value: c.id, label: c.name, hint: c.code }))];
-  }, [isHead, allCentres, session]);
+  }, [session]);
 
   // Debounce the search box.
   useEffect(() => {

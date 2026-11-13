@@ -197,7 +197,9 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
   if (!userId) return null;
   const isAdminUser = u?.role === "SYSTEM_ADMIN";
   const isSelf = u?.id === selfId;
-  const multi = role === "FELLOW";
+  // Fellows and Heads of Service may hold several centres; a Head of Service
+  // sees patients only at the centres ticked here.
+  const multi = role === "FELLOW" || role === "HEAD_OF_SERVICE";
 
   async function run(body: Parameters<typeof api.updateUser>[1], msg: string) {
     if (!u) return;
@@ -229,8 +231,15 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
 
   function toggleCentre(id: string) {
     if (multi) {
-      setCentreIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
-      if (!primary) setPrimary(id);
+      if (centreIds.includes(id)) {
+        if (centreIds.length === 1) return; // at least one centre
+        const rest = centreIds.filter((x) => x !== id);
+        setCentreIds(rest);
+        if (primary === id) setPrimary(rest[0]);
+      } else {
+        setCentreIds([...centreIds, id]);
+        if (!primary) setPrimary(id);
+      }
     } else {
       setCentreIds([id]);
       setPrimary(id);
@@ -265,7 +274,13 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
                     ariaLabel="Role" value={role} disabled={isSelf}
                     onChange={(v) => {
                       setRole(v as ApiRole);
-                      if (v !== "FELLOW" && centreIds.length > 1) { setCentreIds([primary || centreIds[0]]); }
+                      const keep = primary || centreIds[0];
+                      if (v === "HEAD_OF_SERVICE") {
+                        // Every active centre by default; untick to remove.
+                        setCentreIds(Array.from(new Set([...centreIds, ...centres.filter((c) => c.is_active).map((c) => c.id)])));
+                      } else if (v !== "FELLOW" && centreIds.length > 1) {
+                        setCentreIds([keep]); setPrimary(keep);
+                      }
                     }}
                     options={CLINICAL_ROLES.map((r) => ({ value: r, label: API_ROLE_LABELS[r] }))}
                   />
@@ -285,7 +300,10 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
                 )}
               </div>
               <div>
-                <label className="label">{multi ? "Centres (a fellow may belong to several)" : "Centre"}</label>
+                <label className="label">
+                  {role === "HEAD_OF_SERVICE" ? "Centres — sees and adds patients only at the ticked centres"
+                    : multi ? "Centres (a fellow may belong to several)" : "Centre"}
+                </label>
                 <div className="flex flex-wrap gap-1.5">
                   {centres.filter((c) => c.is_active || centreIds.includes(c.id)).map((c) => {
                     const on = centreIds.includes(c.id);
@@ -300,6 +318,11 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
                     );
                   })}
                 </div>
+                {role === "HEAD_OF_SERVICE" && (
+                  <p className="mt-1.5 text-[13px] text-soot/72">
+                    New centres are added automatically. Their own patients stay visible even at an unticked centre.
+                  </p>
+                )}
                 {multi && centreIds.length > 1 && (
                   <div className="mt-2 max-w-xs">
                     <label className="label">Primary centre</label>
@@ -390,6 +413,9 @@ function InviteUser({ open, centres, onClose, onInvited }: {
               placeholder="— choose —"
               options={centres.filter((c) => c.is_active).map((c) => ({ value: c.id, label: c.name, hint: c.code }))} /></div>
         </div>
+        {form.role === "HEAD_OF_SERVICE" && (
+          <p className="text-[13px] text-soot/72">A Head of Service is added to every active centre; this one is their primary. Remove centres later under Manage.</p>
+        )}
         {form.role === "FELLOW" && form.centre_id && (
           <div><label className="label">Supervising consultant (optional)</label>
             <Select ariaLabel="Supervisor" value={form.supervisor_id} onChange={(v) => setForm({ ...form, supervisor_id: v })}

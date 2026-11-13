@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
 import { CLINICAL, useSession } from "@/lib/session";
-import { api, ApiError, errorText, type Centre, type PatientLookup } from "@/lib/api";
+import { api, ApiError, errorText, type PatientLookup } from "@/lib/api";
 import PatientForm, { emptyPatient, identityComplete, type PatientFormValue } from "@/components/PatientForm";
 import { Card, PageHeader, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/Select";
@@ -17,21 +17,16 @@ export default function NewPatientPage() {
   const { session } = useSession();
   const [form, setForm] = useState<PatientFormValue>(emptyPatient);
   const [centreId, setCentreId] = useState(session?.centreId ?? "");
-  const [allCentres, setAllCentres] = useState<Centre[]>([]);
   const [lookup, setLookup] = useState<PatientLookup | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const isHead = session?.role === "head";
-
-  // Where this user may add patients: Head of Service anywhere; others their centres.
-  useEffect(() => { if (isHead) api.centres().then(setAllCentres).catch(() => undefined); }, [isHead]);
-  const centreOptions = useMemo(() => {
-    if (!session) return [];
-    return isHead
-      ? allCentres.map((c) => ({ value: c.id, label: c.name, hint: c.code }))
-      : session.user.centres.map((c) => ({ value: c.id, label: c.name, hint: c.code }));
-  }, [session, isHead, allCentres]);
+  // Where this user may add patients: the centres they belong to (a Head of
+  // Service belongs to every centre unless an administrator removed some).
+  const centreOptions = useMemo(
+    () => (session?.user.centres ?? []).map((c) => ({ value: c.id, label: c.name, hint: c.code })),
+    [session],
+  );
 
   // Duplicate check once the identity number is complete.
   const complete = identityComplete(form);
