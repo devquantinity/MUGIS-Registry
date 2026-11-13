@@ -29,9 +29,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files — real config never goes in git; .env.example does
 .env
-.env*.local
+.env.*
+!.env.example
 
 # vercel
 .vercel

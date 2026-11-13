@@ -1,0 +1,309 @@
+/**
+ * Client for the MUGIS backend (mugis-backend). Every call goes through
+ * `request`, which:
+ *
+ *  - unwraps the standard envelope — success is `{ data }`, failure is
+ *    `{ error_code, message, reason }` and becomes an ApiError;
+ *  - sends the access token, and on a 401 `unauthorized` refreshes once
+ *    (single-flight) and retries — never on a timer, so the backend's idle
+ *    timeout can fire;
+ *  - tells the session layer when the session is over, via `onSessionEnded`.
+ *
+ * The base URL comes from NEXT_PUBLIC_API_BASE_URL (.env / .env.staging).
+ */
+
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+
+// ─── Types — mirror the backend DTOs (openapi.json) ──────────────────────────
+
+export type ApiRole = "SYSTEM_ADMIN" | "HEAD_OF_SERVICE" | "HOD" | "CONSULTANT" | "FELLOW";
+export const CLINICAL_ROLES: ApiRole[] = ["HEAD_OF_SERVICE", "HOD", "CONSULTANT", "FELLOW"];
+
+export const API_ROLE_LABELS: Record<ApiRole, string> = {
+  SYSTEM_ADMIN: "System Admin",
+  HEAD_OF_SERVICE: "Head of Service",
+  HOD: "Head of Department",
+  CONSULTANT: "Consultant",
+  FELLOW: "Fellow / Medical Officer",
+};
+
+export type UserStatus = "invited" | "pending_approval" | "approved" | "active" | "rejected" | "suspended";
+
+export type CentreRef = { id: string; code: string; name: string; is_primary: boolean };
+
+export type Centre = {
+  id: string; code: string; name: string; state?: string;
+  is_active: boolean; created_at: string; updated_at: string;
+};
+
+export type RoleInfo = { name: ApiRole; description: string; rank: number; self_register: boolean };
+
+export type Me = {
+  id: string; email: string; display_name?: string; full_name?: string; phone?: string;
+  id_type?: "mykad" | "passport"; id_number_masked?: string;
+  role: ApiRole; status: UserStatus; two_factor_enabled: boolean;
+  supervisor_id?: string; centres: CentreRef[]; active_centre_id: string | null;
+  last_sign_in_at?: string; last_active_at?: string; created_at: string; updated_at: string;
+};
+
+export type TokenResponse = {
+  access_token: string; refresh_token: string; token_type: "Bearer"; expires_in: number;
+  user: Me; two_factor_setup_required: boolean;
+};
+
+export type LoginResponse = Partial<TokenResponse> & {
+  two_factor_required: boolean; challenge_token?: string; challenge_expires_in?: number;
+};
+
+export type TwoFactorSetup = { secret: string; otpauth_uri: string; issuer: string; account: string };
+
+export type Page = { page: number; page_size: number; total: number };
+
+export type AdminUser = {
+  id: string; email: string; full_name?: string; display_name?: string; phone?: string;
+  role: ApiRole; status: UserStatus; two_factor_enabled: boolean;
+  primary_centre?: CentreRef; centres?: CentreRef[]; supervisor_id?: string;
+  last_active_at?: string; created_at: string;
+};
+
+export type Registration = {
+  id: string; email: string; full_name?: string; phone?: string;
+  id_type?: "mykad" | "passport"; id_number?: string; role: ApiRole;
+  status: "pending_approval" | "approved" | "rejected"; centre?: CentreRef;
+  supervisor_id?: string; reviewed_at?: string; rejection_reason?: string; created_at: string;
+};
+
+export type StaffSummary = { id: string; full_name?: string; email: string };
+
+export type Preview = { email: string; full_name?: string; role: ApiRole; centre?: CentreRef };
+
+// ─── Errors ──────────────────────────────────────────────────────────────────
+
+export class ApiError extends Error {
+  constructor(public status: number, public reason: string, message: string) {
+    super(message);
+  }
+}
+
+let dictionary: Record<string, string> | null = null;
+let dictionaryLoad: Promise<void> | null = null;
+
+/** Loads reason → display message once (GET /error-dictionary). */
+export function loadErrorDictionary(): Promise<void> {
+  if (dictionary) return Promise.resolve();
+  dictionaryLoad ??= fetch(`${API_BASE}/api/v1/error-dictionary`)
+    .then((r) => r.json())
+    .then((env: { data?: { dictionary: { reason: string; display_message: string }[] } }) => {
+      dictionary = Object.fromEntries((env.data?.dictionary ?? []).map((e) => [e.reason, e.display_message]));
+    })
+    .catch(() => { dictionaryLoad = null; });
+  return dictionaryLoad;
+}
+
+/** The text to show for an error: the dictionary's message, else the server's. */
+export function errorText(err: unknown): string {
+  if (err instanceof ApiError) return dictionary?.[err.reason] ?? err.message;
+  if (err instanceof TypeError) return "Cannot reach the registry server. Check your connection and try again.";
+  return err instanceof Error ? err.message : "Something went wrong.";
+}
+
+// ─── Tokens ──────────────────────────────────────────────────────────────────
+//
+// Kept in sessionStorage: survives a reload, gone when the tab closes, and
+// never sent anywhere but the API. The access token lasts 15 minutes.
+
+type Tokens = { access: string; refresh: string };
+const TOKEN_KEY = "mugis.tokens.v1";
+
+let tokens: Tokens | null = null;
+
+function readTokens(): Tokens | null {
+  if (tokens) return tokens;
+  try {
+    const raw = sessionStorage.getItem(TOKEN_KEY);
+    tokens = raw ? (JSON.parse(raw) as Tokens) : null;
+  } catch {
+    tokens = null;
+  }
+  return tokens;
+}
+
+export function hasTokens(): boolean {
+  return readTokens() !== null;
+}
+
+export function setTokens(t: Tokens | null) {
+  tokens = t;
+  try {
+    if (t) sessionStorage.setItem(TOKEN_KEY, JSON.stringify(t));
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage unavailable — tokens stay in memory for this page */
+  }
+}
+
+/** Replace only the access token (after switch-centre). */
+export function setAccessToken(access: string) {
+  const cur = readTokens();
+  if (cur) setTokens({ ...cur, access });
+}
+
+/** Claims of the current access token, unverified — for display only. */
+export function accessClaims(): Record<string, unknown> | null {
+  const t = readTokens();
+  if (!t) return null;
+  try {
+    const part = t.access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), "=")));
+  } catch {
+    return null;
+  }
+}
+
+let sessionEnded: (reason: string) => void = () => {};
+/** The session layer registers here to hear when sign-in is needed again. */
+export function onSessionEnded(fn: (reason: string) => void) {
+  sessionEnded = fn;
+}
+
+let refreshing: Promise<boolean> | null = null;
+
+/** Refresh once for any number of concurrent 401s. */
+function refreshTokens(): Promise<boolean> {
+  refreshing ??= (async () => {
+    const cur = readTokens();
+    if (!cur) return false;
+    try {
+      const res = await rawRequest<TokenResponse>("POST", "/auth/refresh", { refresh_token: cur.refresh }, null);
+      setTokens({ access: res.access_token, refresh: res.refresh_token });
+      return true;
+    } catch (e) {
+      setTokens(null);
+      sessionEnded(e instanceof ApiError ? e.reason : "unauthorized");
+      return false;
+    }
+  })().finally(() => { refreshing = null; });
+  return refreshing;
+}
+
+// ─── Requests ────────────────────────────────────────────────────────────────
+
+type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+async function rawRequest<T>(method: Method, path: string, body: unknown, access: string | null): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (access) headers.Authorization = `Bearer ${access}`;
+
+  const res = await fetch(`${API_BASE}/api/v1${path}`, {
+    method, headers, body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  let env: { data?: T; error_code?: number; message?: string; reason?: string } = {};
+  try {
+    env = await res.json();
+  } catch {
+    /* non-JSON (proxy error page) — handled below */
+  }
+  if (!res.ok) {
+    throw new ApiError(res.status, env.reason ?? "internal_error", env.message ?? `HTTP ${res.status}`);
+  }
+  return env.data as T;
+}
+
+/** An authenticated request, with one refresh-and-retry on an expired token. */
+export async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  const t = readTokens();
+  try {
+    return await rawRequest<T>(method, path, body, t?.access ?? null);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401 && e.reason === "unauthorized" && t) {
+      if (await refreshTokens()) return rawRequest<T>(method, path, body, readTokens()?.access ?? null);
+    }
+    throw e;
+  }
+}
+
+/** A public request — no token, no refresh. */
+export function publicRequest<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  return rawRequest<T>(method, path, body, null);
+}
+
+function qs(params: Record<string, string | number | undefined>): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+export const api = {
+  // public catalogues
+  centres: () => publicRequest<Centre[]>("GET", "/centres"),
+  roles: () => publicRequest<RoleInfo[]>("GET", "/roles"),
+
+  // sign-in
+  login: (email: string, password: string) =>
+    publicRequest<LoginResponse>("POST", "/auth/login", { email, password }),
+  verify2fa: (challenge_token: string, code: string) =>
+    publicRequest<TokenResponse>("POST", "/auth/login/verify-2fa", { challenge_token, code }),
+  refresh: () => refreshTokens(),
+
+  // registration & links
+  register: (body: {
+    email: string; password: string; full_name: string; phone: string;
+    id_type: "mykad" | "passport"; id_number: string; centre_id: string; role: ApiRole;
+  }) => publicRequest<{ message: string }>("POST", "/auth/register", body),
+  previewActivation: (token: string) => publicRequest<Preview>("GET", `/auth/activate${qs({ token })}`),
+  activate: (token: string) => publicRequest<{ message: string }>("POST", "/auth/activate", { token }),
+  resendActivation: (email: string) => publicRequest<{ message: string }>("POST", "/auth/resend-activation", { email }),
+  previewInvitation: (token: string) => publicRequest<Preview>("GET", `/auth/invitation${qs({ token })}`),
+  acceptInvitation: (token: string, password: string, full_name?: string) =>
+    publicRequest<TokenResponse>("POST", "/auth/accept-invitation", { token, password, full_name }),
+  forgotPassword: (email: string) => publicRequest<{ message: string }>("POST", "/auth/forgot-password", { email }),
+  checkResetToken: (token: string) => publicRequest<{ message: string }>("GET", `/auth/reset-password${qs({ token })}`),
+  resetPassword: (token: string, new_password: string) =>
+    publicRequest<{ message: string }>("POST", "/auth/reset-password", { token, new_password }),
+
+  // session
+  me: () => request<Me>("GET", "/auth/me"),
+  updateMe: (body: { display_name?: string; full_name?: string; phone?: string }) => request<Me>("PATCH", "/auth/me", body),
+  changePassword: (current_password: string, new_password: string) =>
+    request<{ message: string }>("POST", "/auth/change-password", { current_password, new_password }),
+  logout: () => {
+    const t = readTokens();
+    return t ? request<{ message: string }>("POST", "/auth/logout", { refresh_token: t.refresh }) : Promise.resolve(null);
+  },
+  switchCentre: (centre_id: string) =>
+    request<{ access_token: string; active_centre_id: string }>("POST", "/auth/switch-centre", { centre_id }),
+  setup2fa: () => request<TwoFactorSetup>("POST", "/auth/2fa/setup"),
+  enable2fa: (code: string) => request<{ message: string }>("POST", "/auth/2fa/enable", { code }),
+
+  // reviewers
+  registrations: (q: { status?: string; centre_id?: string; q?: string; page?: number; page_size?: number }) =>
+    request<{ items: Registration[]; page: Page }>("GET", `/registrations${qs(q)}`),
+  approveRegistration: (id: string, supervisor_id?: string) =>
+    request<Registration>("POST", `/registrations/${id}/approve`, supervisor_id ? { supervisor_id } : {}),
+  rejectRegistration: (id: string, reason?: string) =>
+    request<Registration>("POST", `/registrations/${id}/reject`, reason ? { reason } : {}),
+  consultants: (centreId: string) => request<StaffSummary[]>("GET", `/centres/${centreId}/consultants`),
+
+  // admin — users
+  users: (q: { q?: string; status?: string; role?: string; centre_id?: string; page?: number; page_size?: number }) =>
+    request<{ items: AdminUser[]; page: Page }>("GET", `/admin/users${qs(q)}`),
+  user: (id: string) => request<AdminUser>("GET", `/admin/users/${id}`),
+  inviteUser: (body: { email: string; full_name?: string; role: ApiRole; centre_id: string; supervisor_id?: string }) =>
+    request<AdminUser>("POST", "/admin/users", body),
+  updateUser: (id: string, body: {
+    role?: ApiRole; status?: "active" | "suspended"; centre_ids?: string[];
+    primary_centre_id?: string; supervisor_id?: string; reset_two_factor?: boolean;
+  }) => request<AdminUser>("PATCH", `/admin/users/${id}`, body),
+  resendInvitation: (id: string) => request<{ message: string }>("POST", `/admin/users/${id}/resend-invitation`),
+
+  // admin — centres
+  adminCentres: () => request<Centre[]>("GET", "/admin/centres"),
+  createCentre: (body: { code: string; name: string; state?: string }) => request<Centre>("POST", "/admin/centres", body),
+  updateCentre: (id: string, body: { code?: string; name?: string; state?: string; is_active?: boolean }) =>
+    request<Centre>("PATCH", `/admin/centres/${id}`, body),
+};

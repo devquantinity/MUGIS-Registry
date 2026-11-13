@@ -12,13 +12,46 @@ Society (MUGIS). Phase 1 — Gastric Adenocarcinoma.
 
 ## Getting started
 
+The app signs in against the MUGIS backend (`mugis-backend`). Start that
+first (it listens on http://localhost:8080 by default), then:
+
 ```bash
+cp .env.example .env          # NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 npm install
-npm run dev
+npm run dev                   # reads .env
+npm run dev:staging           # reads .env.staging
+npm run build:staging         # production build against .env.staging
 ```
 
-Open http://localhost:3000. Pick a centre and role, press Continue — no
-password in demo mode. Change the role to see the access model change.
+Open http://localhost:3000 and sign in with a backend account. The first
+SYSTEM_ADMIN comes from the backend (`BOOTSTRAP_ADMIN_EMAIL`, or
+`internal/data/support-sql/CREATE_ADMIN.sql`). Everyone sets up an
+authenticator app on first sign-in.
+
+`.env` and `.env.staging` are gitignored, and `.claude/settings.json` stops
+Claude Code from reading them.
+
+## Backend integration
+
+Live against the API (`src/lib/api.ts`):
+
+| Screen | API |
+| --- | --- |
+| Sign in, 2-step code, mandatory TOTP enrolment | `/auth/login`, `/auth/login/verify-2fa`, `/auth/2fa/*`, `/auth/refresh` |
+| Request an account, activation link, invitation, password reset | `/auth/register`, `/auth/activate`, `/auth/accept-invitation`, `/auth/forgot-password`, `/auth/reset-password` |
+| Profile — details, change password, sign out | `/auth/me`, `/auth/change-password`, `/auth/logout` |
+| Centre switcher (users in several centres) | `/auth/switch-centre` |
+| Admin — Registrations (HOD, Head of Service, Admin) | `/registrations`, `/centres/{id}/consultants` |
+| Admin — Users, Admin — Centres (System Admin) | `/admin/users`, `/admin/centres` |
+
+Error messages shown to users come from `GET /api/v1/error-dictionary`.
+Tokens live in `sessionStorage` (gone when the tab closes); an expired access
+token is refreshed once on a 401, and 30 minutes without activity signs the
+user out.
+
+The registry screens below (patients, episodes, reports, export, audit) still
+run on the seeded in-browser demo data until their APIs exist. Real roles map
+onto them: Consultant → clinician scope, Fellow → trainee scope.
 
 ## What works
 

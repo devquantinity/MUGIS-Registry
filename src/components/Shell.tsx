@@ -5,13 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import LoginScreen from "@/components/LoginScreen";
+import EnrolTwoFactor from "@/components/EnrolTwoFactor";
+import { api, errorText, API_ROLE_LABELS } from "@/lib/api";
 import { CommandPalette } from "@/components/CommandPalette";
-import { findCentre } from "@/lib/centres";
-import { ROLE_LABELS, SessionProvider, useSession, type Role } from "@/lib/session";
-import { seedUsers } from "@/lib/seed";
+import { SessionProvider, useSession, type Role } from "@/lib/session";
 import { StoreProvider, useStore } from "@/lib/store";
 import { useScoped } from "@/lib/useScoped";
-import { canApproveExport, scopeLabel } from "@/lib/access";
+import { canApproveExport } from "@/lib/access";
 import { useExportAlerts } from "@/lib/useExportAlerts";
 import { Modal } from "@/components/ui";
 import { ACCENTS, ThemeProvider, useTheme } from "@/lib/theme";
@@ -202,6 +202,12 @@ const NAV: NavGroup[] = [
         icon: ic(ICONS.approvals),
         roles: ["hod"],
       },
+      {
+        href: "/admin/registrations",
+        label: "Registrations",
+        icon: ic(ICONS.approvals),
+        roles: ["admin", "head", "hod"],
+      },
       { href: "/admin/users", label: "Users", icon: ic(ICONS.users), roles: ["admin"] },
       { href: "/admin/centres", label: "Centres", icon: ic(ICONS.centres), roles: ["admin"] },
       {
@@ -236,16 +242,36 @@ function visibleGroups(role: Role): NavGroup[] {
 
 export { initials } from "@/lib/format";
 
+/** Applications waiting for this reviewer (admin, head, HOD); 0 for others. */
+function usePendingRegistrations(): number {
+  const { session } = useSession();
+  const reviewer = session?.role === "admin" || session?.role === "head" || session?.role === "hod";
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!reviewer) return;
+    let alive = true;
+    const load = () => api.registrations({ page_size: 1 })
+      .then((r) => { if (alive) setN(r.page.total); })
+      .catch(() => undefined);
+    load();
+    const t = window.setInterval(load, 60_000);
+    window.addEventListener("mugis:registrations-changed", load);
+    return () => { alive = false; window.clearInterval(t); window.removeEventListener("mugis:registrations-changed", load); };
+  }, [reviewer]);
+  return reviewer ? n : 0;
+}
+
 /** Live record counts shown as sidebar badges. */
 function useNavCounts(): Record<string, number> {
   const { patients, episodes } = useScoped();
   const { state } = useStore();
   const { session } = useSession();
+  const pendingRegs = usePendingRegistrations();
   const counts: Record<string, number> = {
     "/patients": patients.length,
     "/episodes": episodes.length,
   };
-  if (session?.role === "admin") counts["/admin/users"] = state.users.length;
+  if (pendingRegs) counts["/admin/registrations"] = pendingRegs;
   if (session && canApproveExport(session)) {
     // Only what this person can actually action — their own requests are
     // waiting on somebody else.
@@ -531,7 +557,6 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 /* Mobile top header */
 function MobileHeader({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
   const { session } = useSession();
-  const centre = session ? findCentre(session.centreId) : null;
   return (
     <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ink/[0.05] bg-white/55 dark:bg-paper/45 px-4 backdrop-blur-xl lg:hidden">
       <button
@@ -551,7 +576,7 @@ function MobileHeader({ onMenu, onSearch }: { onMenu: () => void; onSearch: () =
             <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
           </svg>
         </button>
-        <span className="text-xs font-semibold text-ink">{centre?.code ?? "—"}</span>
+        <span className="text-xs font-semibold text-ink">{session?.centreCode ?? "—"}</span>
       </div>
     </header>
   );
@@ -660,11 +685,13 @@ const SHORTCUTS: [string, string][] = [
   ["Tab", "Move between fields; first Tab reveals Skip to content"],
 ];
 
-/** Demo role switcher — re-signs-in as the seeded user holding that role
- *  (same centre where possible) so record scoping changes live. */
-function RoleSwitcher() {
-  const { session, signIn } = useSession();
+/** Centre switcher — only for someone who belongs to more than one centre
+ *  (a fellow on rotation). Calls /auth/switch-centre; otherwise a plain
+ *  badge naming the centre the session works in. */
+function CentreSwitcher() {
+  const { session, switchCentre } = useSession();
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -677,53 +704,58 @@ function RoleSwitcher() {
   }, [open]);
 
   if (!session) return null;
+  const centres = session.user.centres;
+  const badge = (
+    <>
+      <span className="text-forest-500">{ic(ICONS.centres, 13)}</span>
+      <span className="text-[14px] font-semibold text-ink">{session.centreCode}</span>
+      <span className="hidden max-w-[220px] truncate text-[14px] text-soot/72 xl:inline">{session.centreName}</span>
+    </>
+  );
+  const chip = "flex shrink-0 items-center gap-1.5 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] px-2.5 py-1.5 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm";
 
-  function pick(role: Role) {
-    if (!session || role === session.role) { setOpen(false); return; }
-    const u = seedUsers().find((x) => x.role === role && x.centreId === session.centreId)
-      ?? seedUsers().find((x) => x.role === role);
-    if (u) signIn({ email: u.email, name: u.name, role: u.role, centreId: u.centreId });
+  if (centres.length < 2) return <span title={session.centreName} className={chip}>{badge}</span>;
+
+  async function pick(id: string) {
     setOpen(false);
+    if (id === session?.user.active_centre_id) return;
+    try {
+      setError(null);
+      await switchCentre(id);
+    } catch (e) {
+      setError(errorText(e));
+    }
   }
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        title="Viewing as — switch role"
+        title="Switch centre"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] px-2.5 text-[14px] font-semibold text-ink shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12]"
+        className={chip + " transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12]"}
       >
-        <span className="text-forest-500">{ic(ICONS.users, 13)}</span>
-        {ROLE_LABELS[session.role]}
+        {badge}
         <span className="text-soot/65">{ic(ICONS.chevron, 12)}</span>
       </button>
+      {error && <p className="absolute left-0 top-[calc(100%+6px)] z-50 w-64 rounded-lg bg-danger-50 px-3 py-2 text-[13px] text-danger-700">{error}</p>}
       {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[340px] overflow-hidden rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-1.5 shadow-raised">
-          <p className="px-2.5 pb-1.5 pt-1 text-[12px] font-semibold uppercase tracking-wide text-soot/70">View the registry as</p>
-          {(Object.keys(ROLE_LABELS) as Role[]).map((r) => {
-            const active = r === session.role;
+        <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-[320px] overflow-hidden rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-1.5 shadow-raised">
+          <p className="px-2.5 pb-1.5 pt-1 text-[12px] font-semibold uppercase tracking-wide text-soot/70">Work in centre</p>
+          {centres.map((c) => {
+            const active = c.id === session.user.active_centre_id;
             return (
               <button
-                key={r}
-                onClick={() => pick(r)}
+                key={c.id}
+                onClick={() => pick(c.id)}
                 className={
                   "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-[14.5px] transition-colors " +
                   (active ? "bg-forest-50 font-semibold text-forest-600" : "text-ink hover:bg-ink/[0.04]")
                 }
               >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="w-3.5 shrink-0">
-                    {active && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 13l4.5 4.5L19 7" />
-                      </svg>
-                    )}
-                  </span>
-                  <span className="truncate">{ROLE_LABELS[r]}</span>
-                </span>
-                <span className="shrink-0 whitespace-nowrap text-[12.5px] text-soot/70">{scopeLabel(r)}</span>
+                <span className="truncate">{c.name}</span>
+                <span className="shrink-0 text-[12.5px] text-soot/70">{c.code}{c.is_primary ? " · primary" : ""}</span>
               </button>
             );
           })}
@@ -791,19 +823,12 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
   const { session } = useSession();
   const [helpOpen, setHelpOpen] = useState(false);
   if (!session) return null;
-  const centre = findCentre(session.centreId);
   return (
     <header className="no-print sticky top-0 z-30 hidden h-16 items-center justify-between gap-4 border-b border-ink/[0.05] bg-white/55 dark:bg-paper/45 px-5 backdrop-blur-xl lg:top-3 lg:flex lg:rounded-t-[26px]">
       {/* left — which workspace am I in */}
       <div className="flex min-w-0 items-center gap-3">
-        <span
-          title={centre.name}
-          className="flex shrink-0 items-center gap-1.5 rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] px-2.5 py-1.5 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm"
-        >
-          <span className="text-forest-500">{ic(ICONS.centres, 13)}</span>
-          <span className="text-[14px] font-semibold text-ink">{centre.code}</span>
-          <span className="hidden max-w-[180px] truncate text-[14px] text-soot/72 xl:inline">{centre.name}</span>
-        </span>
+        <CentreSwitcher />
+        <span className="hidden text-[13.5px] font-medium text-soot/72 xl:inline">{API_ROLE_LABELS[session.apiRole]}</span>
       </div>
 
       {/* right — search, activity, help, reset, you */}
@@ -825,8 +850,6 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
 
         <span className="h-4 w-px bg-ink/[0.08]" />
 
-        <RoleSwitcher />
-
         <ActivityBell />
 
         <button
@@ -844,7 +867,7 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
 
         <Link
           href="/profile"
-          title={`${session.name} — ${ROLE_LABELS[session.role]} · ${scopeLabel(session.role)}`}
+          title={`${session.name} — ${API_ROLE_LABELS[session.apiRole]}`}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-forest-500 text-[13px] font-bold text-white ring-2 ring-white/70 dark:ring-white/25 transition-transform hover:scale-105"
         >
           {initials(session.name)}
@@ -923,11 +946,20 @@ function Frame({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Pages reachable signed out: they come from email links or the sign-in screen. */
+const PUBLIC_PATHS = ["/register", "/activate", "/accept-invitation", "/forgot-password", "/reset-password"];
+
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, ready } = useSession();
+  const { phase } = useSession();
   const { ready: storeReady } = useStore();
-  if (!ready || !storeReady) return <div className="min-h-screen bg-cream" />;
-  if (!session) return <LoginScreen />;
+  const pathname = usePathname();
+  // Nothing renders until the browser-side store has loaded: its demo counts
+  // differ from the server render and would trip hydration.
+  if (!storeReady) return <div className="min-h-screen bg-cream" />;
+  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) return <>{children}</>;
+  if (phase === "loading") return <div className="min-h-screen bg-cream" />;
+  if (phase === "out") return <LoginScreen />;
+  if (phase === "enrol") return <EnrolTwoFactor />;
   return <Frame>{children}</Frame>;
 }
 
