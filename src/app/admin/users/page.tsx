@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
 import { useSession } from "@/lib/session";
-import { canAdmin } from "@/lib/access";
 import {
   api, errorText, API_ROLE_LABELS, CLINICAL_ROLES,
   type AdminUser, type ApiRole, type Centre, type Page, type StaffSummary, type UserStatus,
@@ -38,7 +37,7 @@ export default function AdminUsersPage() {
   const [inviting, setInviting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const isAdmin = !!session && canAdmin(session);
+  const isAdmin = !!session && session.role === "admin";
 
   // Debounce the search box.
   useEffect(() => {

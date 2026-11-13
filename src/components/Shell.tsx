@@ -3,21 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import LoginScreen from "@/components/LoginScreen";
 import EnrolTwoFactor from "@/components/EnrolTwoFactor";
 import { api, errorText, API_ROLE_LABELS } from "@/lib/api";
-import { CommandPalette } from "@/components/CommandPalette";
-import { SessionProvider, useSession, type Role } from "@/lib/session";
-import { StoreProvider, useStore } from "@/lib/store";
-import { useScoped } from "@/lib/useScoped";
-import { canApproveExport } from "@/lib/access";
-import { useExportAlerts } from "@/lib/useExportAlerts";
+import PatientSearch from "@/components/PatientSearch";
+import { CLINICAL, SessionProvider, useSession, type Role } from "@/lib/session";
 import { Modal } from "@/components/ui";
 import { ACCENTS, ThemeProvider, useTheme } from "@/lib/theme";
-import { initials, relTime } from "@/lib/format";
+import { initials } from "@/lib/format";
 
-type NavItem = { href: string; label: string; icon: React.ReactNode; roles?: Role[] };
+/** soon: the screen exists but its API does not yet — shown with a tag. */
+type NavItem = { href: string; label: string; icon: React.ReactNode; roles?: Role[]; soon?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
 
 const ic = (d: React.ReactNode, size = 16) => (
@@ -176,21 +173,17 @@ const NAV: NavGroup[] = [
     title: "Menu",
     items: [
       { href: "/", label: "Dashboard", icon: ic(ICONS.dashboard) },
-      { href: "/reports", label: "Reports", icon: ic(ICONS.reports) },
-      { href: "/reports/export", label: "Data Export", icon: ic(ICONS.export) },
+      { href: "/reports", label: "Reports", icon: ic(ICONS.reports), soon: true },
+      { href: "/reports/export", label: "Data Export", icon: ic(ICONS.export), soon: true },
     ],
   },
   {
     title: "Registry",
     items: [
-      { href: "/patients", label: "Patients", icon: ic(ICONS.patients) },
-      {
-        href: "/patients/new",
-        label: "New Patient",
-        icon: ic(ICONS.add),
-        roles: ["admin", "clinician", "trainee"],
-      },
-      { href: "/episodes", label: "Cancer Episodes", icon: ic(ICONS.episode) },
+      { href: "/patients", label: "Patients", icon: ic(ICONS.patients), roles: CLINICAL },
+      { href: "/patients/new", label: "New Patient", icon: ic(ICONS.add), roles: CLINICAL },
+      { href: "/patients/access-requests", label: "Access Requests", icon: ic(ICONS.approvals), roles: CLINICAL },
+      { href: "/episodes", label: "Cancer Episodes", icon: ic(ICONS.episode), roles: CLINICAL, soon: true },
     ],
   },
   {
@@ -201,6 +194,7 @@ const NAV: NavGroup[] = [
         label: "Export Approvals",
         icon: ic(ICONS.approvals),
         roles: ["hod"],
+        soon: true,
       },
       {
         href: "/admin/registrations",
@@ -215,6 +209,7 @@ const NAV: NavGroup[] = [
         label: "Audit Trail",
         icon: ic(ICONS.audit),
         roles: ["admin", "head"],
+        soon: true,
       },
     ],
   },
@@ -261,24 +256,32 @@ function usePendingRegistrations(): number {
   return reviewer ? n : 0;
 }
 
-/** Live record counts shown as sidebar badges. */
-function useNavCounts(): Record<string, number> {
-  const { patients, episodes } = useScoped();
-  const { state } = useStore();
+/** Requests waiting on this clinician's decision (owner, or HOD for a departed owner). */
+function usePendingAccessRequests(): number {
   const { session } = useSession();
+  const clinical = !!session && CLINICAL.includes(session.role);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!clinical) return;
+    let alive = true;
+    const load = () => api.accessRequests({ box: "incoming", status: "pending", page_size: 1 })
+      .then((r) => { if (alive) setN(r.page.total); })
+      .catch(() => undefined);
+    load();
+    const t = window.setInterval(load, 60_000);
+    window.addEventListener("mugis:access-requests-changed", load);
+    return () => { alive = false; window.clearInterval(t); window.removeEventListener("mugis:access-requests-changed", load); };
+  }, [clinical]);
+  return clinical ? n : 0;
+}
+
+/** Sidebar badges: only things waiting on this user, from the API. */
+function useNavCounts(): Record<string, number> {
   const pendingRegs = usePendingRegistrations();
-  const counts: Record<string, number> = {
-    "/patients": patients.length,
-    "/episodes": episodes.length,
-  };
+  const pendingAccess = usePendingAccessRequests();
+  const counts: Record<string, number> = {};
   if (pendingRegs) counts["/admin/registrations"] = pendingRegs;
-  if (session && canApproveExport(session)) {
-    // Only what this person can actually action — their own requests are
-    // waiting on somebody else.
-    counts["/admin/approvals"] = state.exportRequests.filter(
-      (r) => r.status === "pending" && r.requestedBy !== session.email
-    ).length;
-  }
+  if (pendingAccess) counts["/patients/access-requests"] = pendingAccess;
   return counts;
 }
 
@@ -359,6 +362,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <span className={"shrink-0 " + (active ? "text-white" : "text-white/40")}>{item.icon}</span>
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.soon && (
+                  <span className="ml-auto shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                    Soon
+                  </span>
+                )}
                 {count !== undefined && (
                   <span className={
                     "ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-medium tabular-nums " +
@@ -400,38 +408,6 @@ function ProfileRow({ onNavigate }: { onNavigate?: () => void }) {
       </span>
       <span className="text-white/35">{ic(ICONS.chevron, 14)}</span>
     </Link>
-  );
-}
-
-function ResetDemo() {
-  const { resetDemo } = useStore();
-  const [ask, setAsk] = useState(false);
-  return (
-    <>
-      <button
-        onClick={() => setAsk(true)}
-        aria-label="Reset demo data"
-        title="Reset demo data"
-        className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/72 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
-      >
-        {ic(ICONS.reset, 15)}
-      </button>
-      <Modal open={ask} onClose={() => setAsk(false)} title="Reset demo data?">
-        <p className="text-sm leading-relaxed text-soot">
-          This restores the original seeded dataset. Any patients, episodes or
-          edits you added in this browser will be lost.
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={() => setAsk(false)} className="btn-secondary">Cancel</button>
-          <button
-            onClick={() => { resetDemo(); setAsk(false); }}
-            className="btn bg-danger-600 text-white hover:bg-danger-700"
-          >
-            Reset data
-          </button>
-        </div>
-      </Modal>
-    </>
   );
 }
 
@@ -584,102 +560,8 @@ function MobileHeader({ onMenu, onSearch }: { onMenu: () => void; onSearch: () =
 
 /* ---------------- header ---------------- */
 
-const ACTION_DOT: Record<string, string> = {
-  create: "bg-sage-600", update: "bg-forest-500", delete: "bg-danger-600",
-  export: "bg-gold-500", request: "bg-gold-500", approve: "bg-sage-600",
-  reject: "bg-danger-600", view: "bg-soot/40", signin: "bg-soot/40", signout: "bg-soot/40",
-};
-
-/** Recent audit activity for this user's scope, with an honest unread dot. */
-function ActivityBell() {
-  const { state } = useStore();
-  const { session } = useSession();
-  const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    try { setSeen(window.sessionStorage.getItem("mugis.activity.seen")); } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
-  const items = useMemo(() => {
-    if (!session) return [];
-    const all = session.role === "admin" || session.role === "head"
-      ? state.audit
-      : state.audit.filter((a) => a.userEmail === session.email);
-    return all.slice(0, 6);
-  }, [state.audit, session]);
-
-  const latest = items[0]?.at ?? null;
-  const unread = !!latest && seen !== latest;
-
-  function toggle() {
-    setOpen((o) => !o);
-    if (latest) {
-      setSeen(latest);
-      try { window.sessionStorage.setItem("mugis.activity.seen", latest); } catch { /* ignore */ }
-    }
-  }
-
-  if (!session) return null;
-  const auditAccess = session.role === "admin" || session.role === "head";
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={toggle}
-        aria-label="Recent activity"
-        className="relative flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.06] text-soot/72 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 dark:hover:bg-white/[0.12] hover:text-ink"
-      >
-        {ic(ICONS.bell, 15)}
-        {unread && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-gold-500" />}
-      </button>
-      {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[330px] overflow-hidden rounded-xl border border-white/60 bg-white/90 dark:border-white/[0.08] dark:bg-paper/95 shadow-raised backdrop-blur-xl">
-          <p className="border-b border-ink/[0.06] px-3.5 py-2.5 text-[14.5px] font-semibold text-ink">
-            Recent activity
-          </p>
-          <ul className="max-h-[300px] overflow-y-auto py-1">
-            {items.map((a) => (
-              <li key={a.id} className="flex items-start gap-2.5 px-3.5 py-2">
-                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${ACTION_DOT[a.action] ?? "bg-soot/40"}`} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14.5px] text-ink">{a.entityLabel}</span>
-                  <span className="block text-[13px] text-soot/70">
-                    {a.action}{auditAccess ? ` · ${a.userEmail.split("@")[0]}` : ""} · {relTime(a.at, Date.now())}
-                  </span>
-                </span>
-              </li>
-            ))}
-            {items.length === 0 && (
-              <li className="px-3.5 py-6 text-center text-[14.5px] text-soot/72">No activity yet.</li>
-            )}
-          </ul>
-          <Link
-            href={auditAccess ? "/admin/audit" : "/profile"}
-            onClick={() => setOpen(false)}
-            className="block border-t border-ink/[0.06] bg-white/50 px-3.5 py-2 text-center text-[14px] font-semibold text-forest-500 transition-colors hover:text-forest-600"
-          >
-            {auditAccess ? "View full audit trail" : "View your activity"}
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
 const SHORTCUTS: [string, string][] = [
-  ["⌘K  or  /", "Search patients and pages"],
-  ["⌘S", "Save the open episode record"],
+  ["⌘K  or  /", "Search patients"],
   ["↑ ↓ and ↵", "Navigate and open search results"],
   ["Esc", "Close dialogs and menus"],
   ["Tab", "Move between fields; first Tab reveals Skip to content"],
@@ -765,60 +647,6 @@ function CentreSwitcher() {
   );
 }
 
-/**
- * Export-approval alert. An approver sees what is waiting on them; a
- * requester sees their own request move. Sits in the header so it follows
- * the user around instead of living on one page they may never open.
- */
-function ExportAlert() {
-  const { toApprove, myPending, myDecided } = useExportAlerts();
-
-  if (toApprove.length > 0) {
-    return (
-      <Link
-        href="/admin/approvals"
-        className="flex h-[34px] items-center gap-2 rounded-[10px] border border-gold-300 bg-gold-100 px-2.5 text-[13px] font-semibold text-goldink transition-colors hover:bg-gold-300/50"
-      >
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-500 opacity-70" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-500" />
-        </span>
-        {toApprove.length} export {toApprove.length === 1 ? "request" : "requests"}
-        <span className="hidden xl:inline font-medium text-goldink/70">awaiting you</span>
-      </Link>
-    );
-  }
-
-  if (myDecided) {
-    const ok = myDecided.status === "approved";
-    return (
-      <Link
-        href="/reports/export"
-        className={"flex h-[34px] items-center gap-2 rounded-[10px] border px-2.5 text-[13px] font-semibold transition-colors " +
-          (ok ? "border-sage-600/30 bg-sage-100 text-sage-700 hover:bg-sage-100/70"
-              : "border-danger-200 bg-danger-50 text-danger-700 hover:bg-danger-50/70")}
-      >
-        {ic(ok ? ICONS.approvals : ICONS.close, 13)}
-        {myDecided.ref} {ok ? "approved" : "refused"}
-      </Link>
-    );
-  }
-
-  if (myPending) {
-    return (
-      <span
-        title={`Submitted ${relTime(myPending.requestedAt, Date.now())} — waiting on an approver`}
-        className="flex h-[34px] items-center gap-2 rounded-[10px] border border-line bg-cream px-2.5 text-[13px] font-medium text-soot/80"
-      >
-        {ic(ICONS.pending, 13)}
-        {myPending.ref} pending
-      </span>
-    );
-  }
-
-  return null;
-}
-
 function Topbar({ onSearch }: { onSearch: () => void }) {
   const { session } = useSession();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -846,11 +674,9 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
           <kbd className="shrink-0 rounded-[7px] border border-ink/10 bg-white/80 dark:bg-white/[0.10] px-2 py-1 text-[12px] font-semibold text-soot/70">⌘K</kbd>
         </button>
 
-        <ExportAlert />
 
         <span className="h-4 w-px bg-ink/[0.08]" />
 
-        <ActivityBell />
 
         <button
           onClick={() => setHelpOpen(true)}
@@ -861,7 +687,6 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
           {ic(ICONS.help, 15)}
         </button>
 
-        <ResetDemo />
 
         <span className="h-4 w-px bg-ink/[0.08]" />
 
@@ -923,7 +748,7 @@ function Frame({ children }: { children: React.ReactNode }) {
       <TopCap />
       <Sidebar />
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <PatientSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       {/* the floating content sheet — inset so the gradient shows around it */}
       <div className="min-h-screen lg:py-3 lg:pl-[268px] lg:pr-3">
         <div
@@ -951,11 +776,7 @@ const PUBLIC_PATHS = ["/register", "/activate", "/accept-invitation", "/forgot-p
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { phase } = useSession();
-  const { ready: storeReady } = useStore();
   const pathname = usePathname();
-  // Nothing renders until the browser-side store has loaded: its demo counts
-  // differ from the server render and would trip hydration.
-  if (!storeReady) return <div className="min-h-screen bg-cream" />;
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) return <>{children}</>;
   if (phase === "loading") return <div className="min-h-screen bg-cream" />;
   if (phase === "out") return <LoginScreen />;
@@ -965,12 +786,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <StoreProvider>
-      <SessionProvider>
-        <ThemeProvider>
-          <AuthGate>{children}</AuthGate>
-        </ThemeProvider>
-      </SessionProvider>
-    </StoreProvider>
+    <SessionProvider>
+      <ThemeProvider>
+        <AuthGate>{children}</AuthGate>
+      </ThemeProvider>
+    </SessionProvider>
   );
 }

@@ -77,6 +77,37 @@ export type StaffSummary = { id: string; full_name?: string; email: string };
 
 export type Preview = { email: string; full_name?: string; role: ApiRole; centre?: CentreRef };
 
+// ─── Patients ────────────────────────────────────────────────────────────────
+
+export const SEX_VALUES = ["Female", "Male"] as const;
+export const ETHNIC_VALUES = ["Bajau", "Bidayuh", "Chinese", "Dayak", "Iban", "Indian", "Kadazan", "Kadazandusun",
+  "Malay", "Melanau", "Murut", "Orang Asli", "Orang Sungai", "Rungus", "Others/Foreigner"] as const;
+export const STATE_VALUES = ["Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis",
+  "Pulau Pinang", "Sabah", "Sarawak", "Selangor", "Terengganu", "WP Kuala Lumpur", "WP Putrajaya", "WP Labuan"] as const;
+
+export type PatientAccess = "owner" | "granted_edit" | "granted_view" | "scope";
+
+export type Patient = {
+  id: string; registry_no: string; centre: { id: string; code: string; name: string }; owner_id: string;
+  full_name: string; id_type: "mykad" | "passport"; id_number?: string; id_number_masked?: string;
+  date_of_birth?: string; sex?: string; ethnic?: string; state?: string;
+  access: PatientAccess; can_edit: boolean; created_at: string; updated_at: string;
+};
+
+export type PatientInput = {
+  full_name?: string; id_type?: "mykad" | "passport"; id_number?: string; date_of_birth?: string;
+  sex?: string; ethnic?: string; state?: string; centre_id?: string;
+};
+
+export type PatientLookup = { status: "none" | "visible" | "not_visible"; patient_id?: string; registry_no?: string };
+
+export type AccessRequest = {
+  id: string; patient_id: string; registry_no?: string; patient_name?: string;
+  requester: { id: string; full_name?: string; email: string; role: ApiRole };
+  permission: "view" | "edit"; status: "pending" | "approved" | "denied";
+  reason?: string; decided_at?: string; decision_note?: string; created_at: string;
+};
+
 // ─── Errors ──────────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -288,6 +319,21 @@ export const api = {
   rejectRegistration: (id: string, reason?: string) =>
     request<Registration>("POST", `/registrations/${id}/reject`, reason ? { reason } : {}),
   consultants: (centreId: string) => request<StaffSummary[]>("GET", `/centres/${centreId}/consultants`),
+
+  // patients — clinical roles; the database decides what each caller sees
+  patients: (q: { q?: string; centre_id?: string; page?: number; page_size?: number }) =>
+    request<{ items: Patient[]; page: Page }>("GET", `/patients${qs(q)}`),
+  patient: (id: string) => request<Patient>("GET", `/patients/${id}`),
+  createPatient: (body: PatientInput) => request<Patient>("POST", "/patients", body),
+  updatePatient: (id: string, body: PatientInput) => request<Patient>("PATCH", `/patients/${id}`, body),
+  lookupPatient: (id_type: "mykad" | "passport", id_number: string) =>
+    request<PatientLookup>("POST", "/patients/lookup", { id_type, id_number }),
+  requestPatientAccess: (id: string, permission: "view" | "edit", reason?: string) =>
+    request<AccessRequest>("POST", `/patients/${id}/access-requests`, { permission, reason: reason || undefined }),
+  accessRequests: (q: { box: "incoming" | "outgoing"; status?: string; page?: number; page_size?: number }) =>
+    request<{ items: AccessRequest[]; page: Page }>("GET", `/patient-access-requests${qs(q)}`),
+  decideAccess: (id: string, approve: boolean, note?: string) =>
+    request<AccessRequest>("POST", `/patient-access-requests/${id}/${approve ? "approve" : "deny"}`, note ? { note } : {}),
 
   // admin — users
   users: (q: { q?: string; status?: string; role?: string; centre_id?: string; page?: number; page_size?: number }) =>

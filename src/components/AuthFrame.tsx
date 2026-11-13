@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { useStore } from "@/lib/store";
 
 /* ---- inline icons ---------------------------------------------------- */
 const Shield = ({ className = "" }: { className?: string }) => (
@@ -23,7 +22,6 @@ const Trail = ({ className = "" }: { className?: string }) => (
 
 /* ---- right-hand visual panel ----------------------------------------- */
 function VisualPanel() {
-  const { state } = useStore();
   const [centres, setCentres] = useState<number | null>(null);
   useEffect(() => {
     api.centres().then((c) => setCentres(c.length)).catch(() => setCentres(null));
@@ -101,16 +99,6 @@ function VisualPanel() {
             </p>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[13px] text-forest-100/60">Patients registered</p>
-              <p className="mt-0.5 text-xl font-bold tabular-nums text-white">{state.patients.length}</p>
-            </div>
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[13px] text-forest-100/60">Episodes recorded</p>
-              <p className="mt-0.5 text-xl font-bold tabular-nums text-white">{state.episodes.length}</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

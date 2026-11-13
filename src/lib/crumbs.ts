@@ -6,6 +6,7 @@ export type Crumb = { label: string; href?: string };
 
 const CRUMBS: [RegExp, Crumb[]][] = [
   [/^\/$/, [{ label: "Overview" }]],
+  [/^\/patients\/access-requests/, [{ label: "Registry" }, { label: "Access requests" }]],
   [/^\/patients\/new/, [{ label: "Registry" }, { label: "Patients", href: "/patients" }, { label: "New patient" }]],
   [/^\/patients\/[^/]+/, [{ label: "Registry" }, { label: "Patients", href: "/patients" }, { label: "Patient record" }]],
   [/^\/patients/, [{ label: "Registry" }, { label: "Patients" }]],

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
 import { useSession } from "@/lib/session";
-import { canAdmin } from "@/lib/access";
 import { api, errorText, type Centre } from "@/lib/api";
 import { fmtDateTime } from "@/lib/format";
 import { Badge, Card, Modal, PageHeader, Stat, Table, Td, Th, Toast } from "@/components/ui";
@@ -24,7 +23,7 @@ export default function AdminCentresPage() {
   const load = useCallback(() => {
     api.adminCentres().then((c) => { setCentres(c); setLoadError(null); }).catch((e) => setLoadError(errorText(e)));
   }, []);
-  useEffect(() => { if (session && canAdmin(session)) load(); }, [session, load]);
+  useEffect(() => { if (session && session.role === "admin") load(); }, [session, load]);
 
   const counts = useMemo(() => ({
     total: centres?.length ?? 0,
@@ -32,7 +31,7 @@ export default function AdminCentresPage() {
   }), [centres]);
 
   if (!session) return null;
-  if (!canAdmin(session)) {
+  if (session.role !== "admin") {
     return (
       <div className="mx-auto max-w-3xl">
         <PageHeader title="Centres" />

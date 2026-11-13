@@ -36,7 +36,7 @@ export function ageFrom(dob: string, at?: string): number | null {
   if (!dob) return null;
   const b = new Date(dob);
   if (Number.isNaN(b.getTime())) return null;
-  const ref = at ? new Date(at) : new Date("2026-08-08");
+  const ref = at ? new Date(at) : new Date();
   let a = ref.getFullYear() - b.getFullYear();
   const m = ref.getMonth() - b.getMonth();
   if (m < 0 || (m === 0 && ref.getDate() < b.getDate())) a--;

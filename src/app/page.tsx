@@ -1,322 +1,131 @@
 "use client";
 
 import Link from "next/link";
+import React, { useEffect, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
-import React, { useMemo, useState } from "react";
-import { useScoped, usePatientMap } from "@/lib/useScoped";
-import { useSession } from "@/lib/session";
-import { CENTRES, findCentre } from "@/lib/centres";
-import { requiredFieldIds } from "@/lib/parameters";
-import { completeness, deriveStage, STAGE_ORDER, stageTone } from "@/lib/staging";
-import { scopeLabel } from "@/lib/access";
-import { fmtDate, relTime, ageSex } from "@/lib/format";
-import { useTheme } from "@/lib/theme";
-import { useExportAlerts } from "@/lib/useExportAlerts";
-import { useStore } from "@/lib/store";
-import { AreaChart, Badge, BarChart, Card, CHART, DonutChart, PageHeader, Progress, RangeFilter, RANGE_MS, SectionTitle, Stat, Table, Td, Th, type TimeRange } from "@/components/ui";
+import { CLINICAL, ROLE_LABELS, useSession } from "@/lib/session";
+import { api, type AccessRequest, type Patient } from "@/lib/api";
+import { ACCESS_LABEL } from "@/lib/patientAccess";
+import { fmtDate } from "@/lib/format";
+import { Badge, Card, PageHeader, SectionTitle, Stat } from "@/components/ui";
 
-const NOW = new Date("2026-08-08T09:00:00Z").getTime();
+type Counts = {
+  patients?: number; incoming?: number; outgoing?: number;
+  registrations?: number; users?: number; centres?: number;
+};
 
 const tico = (d: React.ReactNode) => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
 );
-const TILE_ICONS = {
+const ICONS = {
   patients: tico(<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>),
-  episodes: tico(<><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M16 13H8" /><path d="M16 17H8" /></>),
-  resections: tico(<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />),
-  complete: tico(<><path d="M21.801 10A10 10 0 1 1 17 3.335" /><path d="m9 11 3 3L22 4" /></>),
+  inbox: tico(<><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></>),
+  send: tico(<><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>),
+  users: tico(<><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 12 0v1" /></>),
+  centres: tico(<><path d="M3 21h18" /><path d="M5 21V7l7-4 7 4v14" /><path d="M10 21v-5h4v5" /></>),
 };
 
+/** What exists in the API today, and what is still to come. */
+const AVAILABLE = [
+  "Sign-in with two-factor, registration and account approval",
+  "Centres and user administration (System Admin)",
+  "Patient demography: register, search, view, edit",
+  "Duplicate check by MyKad / passport, and access requests",
+];
+const COMING = ["Cancer episodes, staging and treatment", "Reports and data export", "Export approvals", "Audit trail"];
+
+/** Overview built only from live API numbers. */
 export default function DashboardPage() {
   useTitle("Overview");
-  const { ramp } = useTheme();
-  const { toApprove, myDecided } = useExportAlerts();
-  const { patients, episodes, session } = useScoped();
-  const { state } = useStore();
-  const pmap = usePatientMap();
-  const { session: sess } = useSession();
-  const req = useMemo(() => requiredFieldIds("gastric-adeno"), []);
-  const [range, setRange] = useState<TimeRange>("12m");
+  const { session } = useSession();
+  const [counts, setCounts] = useState<Counts>({});
+  const [recent, setRecent] = useState<Patient[] | null>(null);
+  const [waiting, setWaiting] = useState<AccessRequest[] | null>(null);
 
-  /** Episodes inside the selected window, by diagnosis date. */
-  const epsR = useMemo(() => {
-    const ms = RANGE_MS[range];
-    if (ms === null) return episodes;
-    const cutoff = NOW - ms;
-    return episodes.filter((e) => {
-      const t = new Date(String(e.data.dateDiagnosis ?? "")).getTime();
-      return Number.isFinite(t) && t >= cutoff;
-    });
-  }, [episodes, range]);
+  const role = session?.role;
+  const clinical = !!role && CLINICAL.includes(role);
+  const reviewer = role === "admin" || role === "head" || role === "hod";
 
-  const windows = useMemo(() => {
-    const D30 = 30 * 86400000;
-    const inWindow = (iso: string, from: number, to: number) => {
-      const t = new Date(iso).getTime();
-      return Number.isFinite(t) && t >= from && t < to;
-    };
-    const dx = (from: number, to: number) =>
-      episodes.filter((e) => inWindow(String(e.data.dateDiagnosis ?? ""), from, to)).length;
-    const px = (from: number, to: number) =>
-      patients.filter((p) => inWindow(p.createdAt, from, to)).length;
-    const sx = (from: number, to: number) =>
-      episodes.filter((e) => inWindow(String(e.data.dateSurgery ?? ""), from, to)).length;
-    // Counts, not percentages — "+2 in the last 30 days" says more than
-    // "-100.0%" when the numbers are single-digit.
-    const mk = (cur: number, prev: number, noun: string) => ({
-      text: `${cur} ${noun} in last 30 days`,
-      tone: (cur > prev ? "up" : cur < prev ? "down" : "flat") as "up" | "down" | "flat",
-    });
-    return {
-      patients: mk(px(NOW - D30, NOW), px(NOW - 2 * D30, NOW - D30), "registered"),
-      diagnoses: mk(dx(NOW - D30, NOW), dx(NOW - 2 * D30, NOW - D30), "diagnosed"),
-      surgeries: mk(sx(NOW - D30, NOW), sx(NOW - 2 * D30, NOW - D30), "operated"),
-    };
-  }, [episodes, patients]);
-
-  const stats = useMemo(() => {
-    const withSurgery = episodes.filter((e) => e.data.surgery && e.data.surgery !== "No Surgery").length;
-    const deaths = episodes.filter((e) => e.data.death === "Yes").length;
-    const recur = episodes.filter((e) => e.data.recurrence === "Yes").length;
-    const comp = episodes.map((e) => completeness(e.data, req).pct);
-    const avgComp = comp.length ? Math.round(comp.reduce((a, b) => a + b, 0) / comp.length) : 0;
-    const incomplete = comp.filter((c) => c < 80).length;
-    const drafts = episodes.filter((e) => e.status === "draft").length;
-    return { withSurgery, deaths, recur, avgComp, incomplete, drafts };
-  }, [episodes, req]);
-
-  const stageDist = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const e of epsR) {
-      const s = deriveStage(e.data).stage ?? "Not derived";
-      counts.set(s, (counts.get(s) ?? 0) + 1);
+  useEffect(() => {
+    if (!role) return;
+    let alive = true;
+    const put = (k: keyof Counts) => (n: number) => { if (alive) setCounts((c) => ({ ...c, [k]: n })); };
+    const quiet = () => undefined;
+    if (clinical) {
+      api.patients({ page_size: 5 }).then((r) => { put("patients")(r.page.total); if (alive) setRecent(r.items); }).catch(quiet);
+      api.accessRequests({ box: "incoming", status: "pending", page_size: 5 })
+        .then((r) => { put("incoming")(r.page.total); if (alive) setWaiting(r.items); }).catch(quiet);
+      api.accessRequests({ box: "outgoing", status: "pending", page_size: 1 }).then((r) => put("outgoing")(r.page.total)).catch(quiet);
     }
-    const ordered = [...STAGE_ORDER, "Not derived"];
-    return ordered.filter((s) => counts.has(s)).map((s) => ({ label: s === "Not derived" ? s : `Stage ${s}`, value: counts.get(s)! }));
-  }, [epsR]);
-
-  const byCentre = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const e of epsR) counts.set(e.centreId, (counts.get(e.centreId) ?? 0) + 1);
-    return CENTRES.filter((c) => counts.has(c.id))
-      .map((c) => ({ label: c.code, value: counts.get(c.id)! }))
-      .sort((a, b) => b.value - a.value);
-  }, [epsR]);
-
-  const byApproach = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const e of epsR) {
-      const m = String(e.data.method ?? "");
-      if (m) counts.set(m, (counts.get(m) ?? 0) + 1);
+    if (reviewer) api.registrations({ page_size: 1 }).then((r) => put("registrations")(r.page.total)).catch(quiet);
+    if (role === "admin") {
+      api.users({ page_size: 1 }).then((r) => put("users")(r.page.total)).catch(quiet);
+      api.adminCentres().then((c) => put("centres")(c.length)).catch(quiet);
     }
-    return [...counts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
-  }, [epsR]);
-
-  const byPresentation = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const e of epsR) {
-      const v = String(e.data.firstPresentation ?? "");
-      if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
-    }
-    return [...counts.entries()].map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value).slice(0, 8);
-  }, [epsR]);
-
-  const monthly = useMemo(() => {
-    const out: { label: string; value: number }[] = [];
-    const ref = new Date(NOW);
-    const months = range === "3m" ? 3 : range === "6m" ? 6 : range === "12m" ? 12 : 24;
-    for (let i = months - 1; i >= 0; i--) {
-      const d = new Date(ref.getFullYear(), ref.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const label = d.toLocaleDateString("en-GB", { month: "short" }) + (d.getMonth() === 0 ? ` \u2019${String(d.getFullYear()).slice(2)}` : "");
-      out.push({ label, value: episodes.filter((e) => String(e.data.dateDiagnosis ?? "").startsWith(key)).length });
-    }
-    return out;
-  }, [episodes, range]);
-
-  const recent = useMemo(
-    () => [...episodes].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, 6),
-    [episodes]
-  );
-
-  const myAudit = useMemo(
-    () => state.audit.filter((a) => !sess || sess.role === "admin" || sess.role === "head" || a.userEmail === sess.email).slice(0, 6),
-    [state.audit, sess]
-  );
+    return () => { alive = false; };
+  }, [role, clinical, reviewer]);
 
   if (!session) return null;
+  const n = (v?: number) => (v === undefined ? "…" : v);
 
   return (
     <div>
       <PageHeader
-        title="Overview"
-        subtitle={`${findCentre(session.centreId).name} · ${scopeLabel(session.role)}`}
-        actions={
-          <>
-            <RangeFilter value={range} onChange={setRange} />
-            <Link href="/patients/new" className="btn-primary">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-              New patient
-            </Link>
-            <Link href="/reports" className="btn-secondary">Reports</Link>
-          </>
-        }
+        title={`Welcome, ${session.name}`}
+        subtitle={`${ROLE_LABELS[session.role]} · ${session.centreName}`}
       />
 
-      {toApprove.length > 0 && (
-        <Link href="/admin/approvals"
-          className="mb-3 flex flex-wrap items-center gap-3 rounded-[14px] border border-gold-300 bg-gold-100/80 px-4 py-3 transition-colors hover:bg-gold-100">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-500 opacity-70" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-gold-500" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-ink">
-              {toApprove.length} export {toApprove.length === 1 ? "request needs" : "requests need"} your decision
-            </span>
-            <span className="block text-[13px] text-soot/80">
-              {toApprove[0].requestedByName} asked to release direct identifiers for{" "}
-              {toApprove[0].scopeRecords} records
-              {toApprove.length > 1 ? `, and ${toApprove.length - 1} more` : ""}. Nothing leaves the
-              registry until someone decides.
-            </span>
-          </span>
-          <span className="shrink-0 text-[13px] font-semibold text-forest-600">Review →</span>
-        </Link>
-      )}
-
-      {myDecided && (
-        <Link href="/reports/export"
-          className={"mb-3 flex flex-wrap items-center gap-3 rounded-[14px] border px-4 py-3 transition-colors " +
-            (myDecided.status === "approved"
-              ? "border-sage-600/30 bg-sage-100/80 hover:bg-sage-100"
-              : "border-danger-200 bg-danger-50/80 hover:bg-danger-50")}>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-ink">
-              {myDecided.ref} was {myDecided.status === "approved" ? "approved" : "refused"} by {myDecided.decidedByName}
-            </span>
-            <span className="block text-[13px] text-soot/80">
-              {myDecided.status === "approved"
-                ? "Single use — take the extract before the window closes."
-                : myDecided.decisionNote}
-            </span>
-          </span>
-          <span className="shrink-0 text-[13px] font-semibold text-forest-600">
-            {myDecided.status === "approved" ? "Export →" : "Revise →"}
-          </span>
-        </Link>
-      )}
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Patients" value={patients.length} chip={windows.patients} tone="info" icon={TILE_ICONS.patients} />
-        <Stat label="Cancer episodes" value={episodes.length} chip={windows.diagnoses} tone="info" icon={TILE_ICONS.episodes} />
-        <Stat label="Resections performed" value={stats.withSurgery} chip={windows.surgeries} tone="ok" icon={TILE_ICONS.resections} />
-        <Stat label="Average completeness" value={`${stats.avgComp}%`}
-          sub={`${stats.incomplete} records below 80%`} tone={stats.avgComp >= 80 ? "ok" : "warn"} icon={TILE_ICONS.complete} />
-      </div>
-
-      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
-        <Card className="min-w-0 xl:col-span-5">
-          <SectionTitle right={<Badge tone="muted">by diagnosis date</Badge>}>{`New diagnoses — ${range === "all" ? "24" : range.replace("m", "")} months`}</SectionTitle>
-          <AreaChart data={monthly} height={150} />
-        </Card>
-        <Card className="min-w-0 xl:col-span-4">
-          <SectionTitle right={<Badge tone="info">AJCC 8th ed.</Badge>}>Stage distribution</SectionTitle>
-          {stageDist.length ? (
-            <BarChart
-              data={stageDist}
-              height={150}
-              color={(d, i) =>
-                d.label === "Not derived"
-                  ? CHART.other
-                  : ramp(stageDist.length <= 1 ? 1 : i / (stageDist.length - 1))}
-            />
-          ) :
-            <p className="py-8 text-center text-sm text-soot/75">No episodes to chart yet.</p>}
-        </Card>
-        <Card className="min-w-0 xl:col-span-3">
-          <SectionTitle>Surgical approach</SectionTitle>
-          {byApproach.length ? <DonutChart data={byApproach} unit="operations" size={126} stacked /> :
-            <p className="py-8 text-center text-sm text-soot/75">No operative data yet.</p>}
-        </Card>
-      </div>
-
-      <div className="mt-3 grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
-        <Card>
-          <SectionTitle right={<Badge tone="muted">{range === "all" ? "all time" : `last ${range.replace("m", "")} months`}</Badge>}>
-            Episodes by centre
-          </SectionTitle>
-          {byCentre.length ? <BarChart data={byCentre} height={150} /> :
-            <p className="py-6 text-center text-sm text-soot/75">No diagnoses in this window.</p>}
-        </Card>
-        <Card>
-          <SectionTitle right={<Badge tone="muted">{range === "all" ? "all time" : `last ${range.replace("m", "")} months`}</Badge>}>
-            Presenting complaint
-          </SectionTitle>
-          {byPresentation.length ? <BarChart data={byPresentation} height={150} /> :
-            <p className="py-6 text-center text-sm text-soot/75">No diagnoses in this window.</p>}
-        </Card>
-      </div>
-
-      <div className="mt-6">
-        <SectionTitle right={<Link href="/episodes" className="text-xs font-semibold text-forest-500 hover:text-forest-600">View all →</Link>}>
-          Recently updated
-        </SectionTitle>
-        {recent.length ? (
-          <Table head={
-            <tr>
-              <Th>Registry no.</Th><Th>Patient</Th><Th>Stage</Th>
-              <Th align="center">Completeness</Th><Th>Updated</Th>
-            </tr>
-          }>
-            {recent.map((e) => {
-              const p = pmap.get(e.patientId);
-              const st = deriveStage(e.data);
-              const c = completeness(e.data, req);
-              return (
-                <tr key={e.id} className="hover:bg-cream/50">
-                  <Td><Link href={`/episodes/${e.id}`} className="font-semibold text-forest-500 hover:underline">{p?.registryNo ?? "—"}</Link></Td>
-                  <Td>
-                    <span className="font-medium text-ink">{p?.fullName ?? "—"}</span>
-                    <span className="ml-2 text-[13px] text-soot/72">
-                      {p ? ageSex(p.dob, p.sex) : ""}
-                    </span>
-                  </Td>
-                  <Td><Badge tone={stageTone(st.stage)}>{st.stage ? `Stage ${st.stage}` : "—"}</Badge></Td>
-                  <Td align="center">
-                    <div className="mx-auto w-24">
-                      <Progress value={c.pct} tone={c.pct >= 80 ? "info" : c.pct >= 50 ? "warn" : "bad"} />
-                      <span className="mt-1 block text-[12px] tabular-nums text-soot/75">{c.pct}%</span>
-                    </div>
-                  </Td>
-                  <Td><span className="text-xs text-soot/80">{relTime(e.updatedAt, NOW)}</span></Td>
-                </tr>
-              );
-            })}
-          </Table>
-        ) : (
-          <Card><p className="py-6 text-center text-sm text-soot/75">No episodes visible to you yet.</p></Card>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {clinical && <>
+          <Link href="/patients"><Stat label="Patients you can see" value={n(counts.patients)} icon={ICONS.patients} tone="info" /></Link>
+          <Link href="/patients/access-requests"><Stat label="Access requests for you" value={n(counts.incoming)} icon={ICONS.inbox} tone={counts.incoming ? "warn" : "muted"} sub="pending your decision" /></Link>
+          <Link href="/patients/access-requests?box=outgoing"><Stat label="Your requests" value={n(counts.outgoing)} icon={ICONS.send} sub="still pending" /></Link>
+        </>}
+        {reviewer && (
+          <Link href="/admin/registrations"><Stat label="Registrations to review" value={n(counts.registrations)} icon={ICONS.users} tone={counts.registrations ? "warn" : "muted"} /></Link>
         )}
+        {role === "admin" && <>
+          <Link href="/admin/users"><Stat label="Users" value={n(counts.users)} icon={ICONS.users} /></Link>
+          <Link href="/admin/centres"><Stat label="Centres" value={n(counts.centres)} icon={ICONS.centres} /></Link>
+        </>}
       </div>
 
-      <div className="mt-6">
-        <SectionTitle>Recent activity</SectionTitle>
-        <Card padded={false}>
-          <ul className="divide-y divide-line">
-            {myAudit.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
-                <Badge tone={a.action === "create" ? "ok" : a.action === "delete" ? "bad" : a.action === "export" ? "gold" : "info"}>
-                  {a.action}
-                </Badge>
-                <span className="flex-1 truncate text-sm text-ink">{a.entityLabel}</span>
-                <span className="hidden text-[13px] text-soot/72 sm:inline">{a.userEmail}</span>
-                <span className="text-[13px] tabular-nums text-soot/70">{fmtDate(a.at)}</span>
-              </li>
-            ))}
-            {myAudit.length === 0 && <li className="px-4 py-6 text-center text-sm text-soot/75">No activity recorded.</li>}
-          </ul>
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {clinical && (
+          <Card className="lg:col-span-2">
+            <SectionTitle right={<Link href="/patients" className="text-[13px] font-semibold text-forest-600">All patients</Link>}>Recently updated</SectionTitle>
+            {recent === null ? <p className="text-sm text-soot/72">Loading…</p> : recent.length === 0 ? (
+              <p className="text-sm text-soot/80">No patients yet. <Link href="/patients/new" className="font-semibold text-forest-600 underline underline-offset-2">Register one</Link>.</p>
+            ) : (
+              <ul className="divide-y divide-ink/[0.05]">
+                {recent.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/patients/${p.id}`} className="flex items-center gap-3 py-2 hover:text-forest-600">
+                      <span className="font-mono text-[13px] text-soot">{p.registry_no}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{p.full_name}</span>
+                      <Badge tone={ACCESS_LABEL[p.access].tone}>{ACCESS_LABEL[p.access].text}</Badge>
+                      <span className="hidden text-[13px] text-soot/72 sm:inline">{fmtDate(p.updated_at)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {waiting && waiting.length > 0 && (
+              <div className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-[13.5px] text-goldink/85">
+                {(counts.incoming ?? waiting.length) === 1 ? "1 request is" : `${counts.incoming ?? waiting.length} requests are`} waiting for access to your patients.{" "}
+                <Link href="/patients/access-requests" className="font-semibold underline underline-offset-2">Review</Link>
+              </div>
+            )}
+          </Card>
+        )}
+
+        <Card className={clinical ? "" : "lg:col-span-3"}>
+          <SectionTitle>In this build</SectionTitle>
+          <p className="mb-1.5 text-[13px] font-semibold text-sage-700">Available now</p>
+          <ul className="mb-3 grid gap-1 text-[13.5px] text-ink">{AVAILABLE.map((a) => <li key={a}>✓ {a}</li>)}</ul>
+          <p className="mb-1.5 text-[13px] font-semibold text-soot/80">Coming soon</p>
+          <ul className="grid gap-1 text-[13.5px] text-soot/80">{COMING.map((a) => <li key={a}>· {a}</li>)}</ul>
         </Card>
       </div>
     </div>

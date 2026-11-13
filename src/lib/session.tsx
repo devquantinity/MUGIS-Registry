@@ -5,24 +5,24 @@ import {
   api, accessClaims, hasTokens, loadErrorDictionary, onSessionEnded, setAccessToken, setTokens,
   type ApiRole, type Me, type TokenResponse,
 } from "@/lib/api";
-import { CENTRES } from "@/lib/centres";
 
 /**
- * Roles used by the registry screens (patients, episodes, reports), which
- * still run on demo data until their APIs exist. Each real backend role maps
- * onto one of these keys — see ROLE_FROM_API. "researcher" exists only in
- * the seeded demo data; no real account has it.
+ * Short role keys the screens use for navigation and page guards. Each real
+ * backend role maps onto one — see ROLE_FROM_API. What a user may actually
+ * see and do is always decided by the API.
  */
-export type Role = "admin" | "clinician" | "hod" | "head" | "researcher" | "trainee";
+export type Role = "admin" | "clinician" | "hod" | "head" | "trainee";
 
 export const ROLE_LABELS: Record<Role, string> = {
   hod: "Head of Department",
   head: "Head of Service",
   clinician: "Consultant",
-  researcher: "Researcher",
   trainee: "Fellow / Medical Officer",
   admin: "System Admin",
 };
+
+/** Roles that work with patient records (everyone but SYSTEM_ADMIN). */
+export const CLINICAL: Role[] = ["head", "hod", "clinician", "trainee"];
 
 const ROLE_FROM_API: Record<ApiRole, Role> = {
   SYSTEM_ADMIN: "admin",
@@ -33,9 +33,8 @@ const ROLE_FROM_API: Record<ApiRole, Role> = {
 };
 
 /**
- * What the screens read. `role` and `centreId` are the registry-screen keys
- * (the demo centre id when the real centre's code matches one, so demo
- * records scope correctly); `user` is the real account from the API.
+ * What the screens read: the real account from the API (`user`), plus
+ * shortcuts — the role key, and the centre this session works in.
  */
 export type Session = {
   email: string;
@@ -76,14 +75,11 @@ const SessionContext = createContext<Ctx | null>(null);
 
 function toSession(me: Me): Session {
   const active = me.centres.find((c) => c.id === me.active_centre_id) ?? me.centres.find((c) => c.is_primary);
-  const demo = active && CENTRES.find(
-    (c) => c.code.toLowerCase() === active.code.toLowerCase() || c.id === active.code.toLowerCase()
-  );
   return {
     email: me.email,
     name: me.display_name || me.full_name || me.email,
     role: ROLE_FROM_API[me.role],
-    centreId: demo?.id ?? active?.id ?? "",
+    centreId: active?.id ?? "",
     apiRole: me.role,
     centreCode: active?.code ?? (me.role === "SYSTEM_ADMIN" ? "All" : "—"),
     centreName: active?.name ?? (me.role === "SYSTEM_ADMIN" ? "All centres" : "No centre"),

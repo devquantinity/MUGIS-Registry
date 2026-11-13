@@ -1,222 +1,168 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
-import { useMemo, useState } from "react";
-import { useStore } from "@/lib/store";
-import { useSession } from "@/lib/session";
-import { canCreate } from "@/lib/access";
-import { CENTRES, findCentre } from "@/lib/centres";
-import { ETHNIC, STATES, schemaFor } from "@/lib/parameters";
-import { hashId, ageFrom, formatMykad, mykadIdentity } from "@/lib/format";
-import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui";
-import { DatePicker } from "@/components/DatePicker";
-import { Select, opts } from "@/components/Select";
+import { CLINICAL, useSession } from "@/lib/session";
+import { api, ApiError, errorText, type Centre, type PatientLookup } from "@/lib/api";
+import PatientForm, { emptyPatient, identityComplete, type PatientFormValue } from "@/components/PatientForm";
+import { Card, PageHeader, SectionTitle } from "@/components/ui";
+import { Select } from "@/components/Select";
 
+/** Register a patient (POST /patients), warning about duplicates as you type. */
 export default function NewPatientPage() {
   useTitle("New patient");
   const router = useRouter();
   const { session } = useSession();
-  const { state, addPatient, addEpisode } = useStore();
-  const groups = useMemo(() => schemaFor("gastric-adeno"), []);
+  const [form, setForm] = useState<PatientFormValue>(emptyPatient);
+  const [centreId, setCentreId] = useState(session?.centreId ?? "");
+  const [allCentres, setAllCentres] = useState<Centre[]>([]);
+  const [lookup, setLookup] = useState<PatientLookup | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const [form, setForm] = useState({
-    fullName: "", mykad: "", passport: "", dob: "", sex: "" as "" | "Male" | "Female",
-    ethnic: "", state: "", centreId: session?.centreId ?? CENTRES[0].id,
-  });
-  const [error, setError] = useState("");
+  const isHead = session?.role === "head";
 
-  const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+  // Where this user may add patients: Head of Service anywhere; others their centres.
+  useEffect(() => { if (isHead) api.centres().then(setAllCentres).catch(() => undefined); }, [isHead]);
+  const centreOptions = useMemo(() => {
+    if (!session) return [];
+    return isHead
+      ? allCentres.map((c) => ({ value: c.id, label: c.name, hint: c.code }))
+      : session.user.centres.map((c) => ({ value: c.id, label: c.name, hint: c.code }));
+  }, [session, isHead, allCentres]);
 
-  // MyKad drives identity: dashes insert themselves, and once the number is
-  // plausible the date of birth (first six digits) and sex (last digit) fill
-  // in automatically — both stay editable.
-  function onMykad(raw: string) {
-    const mykad = formatMykad(raw);
-    const { dob, sex } = mykadIdentity(mykad);
-    setForm((f) => ({ ...f, mykad, dob: dob ?? f.dob, sex: sex ?? f.sex }));
-  }
-
-  const duplicate = useMemo(() => {
-    const k = form.mykad.trim();
-    if (k.length < 12) return null;
-    const target = hashId(k);
-    const hit = state.patients.find((p) => hashId(p.mykad) === target);
-    if (!hit) return null;
-    return { sameCentre: hit.centreId === form.centreId, centre: findCentre(hit.centreId), hash: target };
-  }, [form.mykad, form.centreId, state.patients]);
-
-  const age = form.dob ? ageFrom(form.dob) : null;
-  const filled = ["fullName", "mykad", "dob", "sex", "ethnic", "state"]
-    .filter((k) => form[k as keyof typeof form]).length;
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    if (!session) return;
-    // Nothing is mandatory — the registry philosophy is save-part-complete.
-    // Only impossible data (future DOB) and same-centre duplicates block.
-    if (form.dob && new Date(form.dob) > new Date()) return setError("Date of birth cannot be in the future.");
-    if (duplicate?.sameCentre) return setError("This patient already exists in your centre.");
-
-    const p = addPatient(session, {
-      fullName: form.fullName.trim() || "Unnamed patient", mykad: form.mykad.trim(), passport: form.passport.trim(),
-      dob: form.dob, sex: form.sex, ethnic: form.ethnic, state: form.state, centreId: form.centreId,
-    });
-    const ep = addEpisode(session, p.id, "gastric-adeno");
-    router.push(`/episodes/${ep.id}`);
-  }
+  // Duplicate check once the identity number is complete.
+  const complete = identityComplete(form);
+  useEffect(() => {
+    setLookup(null);
+    if (!complete) return;
+    let alive = true;
+    const t = window.setTimeout(() => {
+      api.lookupPatient(form.id_type, form.id_number).then((r) => { if (alive) setLookup(r); }).catch(() => undefined);
+    }, 300);
+    return () => { alive = false; window.clearTimeout(t); };
+  }, [complete, form.id_type, form.id_number]);
 
   if (!session) return null;
-  if (!canCreate(session)) {
+  if (!CLINICAL.includes(session.role)) {
     return (
       <div className="mx-auto max-w-2xl">
         <PageHeader title="New patient" />
-        <Card><p className="text-sm text-soot">Your role does not permit creating records.</p></Card>
+        <Card><p className="text-sm text-soot">System administrators do not work with patient records.</p></Card>
       </div>
     );
   }
 
+  const blocked = lookup?.status === "visible" || lookup?.status === "not_visible";
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    if (!form.full_name.trim() || !form.id_number.trim()) { setError("Full name and identity number are required."); return; }
+    setBusy(true); setError(null);
+    try {
+      const p = await api.createPatient({
+        full_name: form.full_name.trim(), id_type: form.id_type, id_number: form.id_number,
+        date_of_birth: form.date_of_birth || undefined, sex: form.sex || undefined,
+        ethnic: form.ethnic || undefined, state: form.state || undefined,
+        centre_id: centreId || undefined,
+      });
+      router.push(`/patients/${p.id}`);
+    } catch (err) {
+      setError(errorText(err));
+      if (err instanceof ApiError && (err.reason === "patient_exists" || err.reason === "patient_exists_elsewhere")) {
+        api.lookupPatient(form.id_type, form.id_number).then(setLookup).catch(() => undefined);
+      }
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
-      <PageHeader
-        title="New patient"
-        subtitle="Step 1 of 12 — Demography. The clinical groups follow, one step at a time."
-      />
+      <PageHeader title="New patient" subtitle="Demography. Only the name and an identity number are required — the rest can be completed later." />
+      <form onSubmit={submit} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <SectionTitle>Demography</SectionTitle>
+          <PatientForm value={form} onChange={setForm} />
+          {lookup && <Duplicate lookup={lookup} />}
+          {error && !blocked && <p className="mt-4 rounded-xl border border-danger-200 bg-danger-50 px-3 py-2.5 text-[13.5px] text-danger-700">{error}</p>}
+        </Card>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* -------- form -------- */}
-        <form onSubmit={submit} className="lg:col-span-2">
+        <div className="grid content-start gap-4">
           <Card>
-            <div className="mb-4 flex items-center justify-between">
-              <SectionTitle>Demography</SectionTitle>
-              <span className="text-[13px] tabular-nums text-soot/75">{filled}/6 core fields</span>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="label">Full name</label>
-                <input className="input" value={form.fullName} onChange={(e) => set("fullName")(e.target.value)}
-                  placeholder="As per identity document" autoFocus />
-              </div>
-              <div>
-                <label className="label">MyKad No</label>
-                <input className="input font-mono" value={form.mykad} onChange={(e) => onMykad(e.target.value)}
-                  inputMode="numeric" placeholder="000000-00-0000" />
-                <p className="mt-1 text-[13px] text-soot/72">Dashes, date of birth and sex fill in automatically.</p>
-              </div>
-              <div>
-                <label className="label">Passport No</label>
-                <input className="input font-mono" value={form.passport} onChange={(e) => set("passport")(e.target.value)}
-                  placeholder="Non-citizens only" />
-              </div>
-              <div>
-                <label className="label">Date of birth</label>
-                <DatePicker value={form.dob} max={new Date().toISOString().slice(0, 10)} onChange={(iso) => set("dob")(iso)} placeholder="Date of birth" />
-                {form.dob && (age !== null ? <p className="mt-1 text-[13px] text-soot/75">Age {age}</p> : <p className="mt-1 text-[13px] font-semibold text-danger-600">Date is in the future</p>)}
-              </div>
-              <div>
-                <label className="label">Sex</label>
-                <Select
-                  ariaLabel="Sex"
-                  value={form.sex}
-                  onChange={set("sex")}
-                  options={[{ value: "Female", label: "Female" }, { value: "Male", label: "Male" }]}
-                />
-              </div>
-              <div>
-                <label className="label">Ethnic</label>
-                <Select
-                  ariaLabel="Ethnic"
-                  value={form.ethnic}
-                  onChange={set("ethnic")}
-                  options={opts(ETHNIC)}
-                />
-              </div>
-              <div>
-                <label className="label">State</label>
-                <Select
-                  ariaLabel="State"
-                  value={form.state}
-                  onChange={set("state")}
-                  options={opts(STATES)}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="label">Centre</label>
-                <Select
-                  ariaLabel="Centre"
-                  value={form.centreId}
-                  onChange={set("centreId")}
-                  options={CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code }))}
-                />
-              </div>
-            </div>
-
-            {error && (
-              <p className="mt-4 rounded-xl border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">{error}</p>
-            )}
-
-            <div className="mt-5 flex gap-2">
-              <button type="submit" className="btn-primary">Continue to Step 2 — Referrals →</button>
-              <button type="button" onClick={() => router.back()} className="btn-secondary">← Back</button>
-            </div>
-          </Card>
-        </form>
-
-        {/* -------- right rail: steps ahead + identity check -------- */}
-        <div className="space-y-4">
-          <Card>
-            <SectionTitle>Identity check</SectionTitle>
-            {form.mykad.trim().length < 12 ? (
-              <p className="text-xs leading-relaxed text-soot/75">
-                Enter the MyKad number and the registry checks — by hashed identifier — whether
-                this patient already exists at any centre, without exposing anyone&apos;s clinical data.
-              </p>
-            ) : duplicate ? (
-              <div className={"rounded-xl border px-3 py-2.5 " +
-                (duplicate.sameCentre ? "border-danger-200 bg-danger-50" : "border-gold-300 bg-gold-100/70")}>
-                <Badge tone={duplicate.sameCentre ? "bad" : "warn"}>
-                  {duplicate.sameCentre ? "Duplicate in your centre" : "Exists at another centre"}
-                </Badge>
-                <p className="mt-1.5 text-xs leading-relaxed text-soot">
-                  {duplicate.sameCentre
-                    ? "Open the existing record rather than creating a second one."
-                    : `Registered at ${duplicate.centre.name}. You may still register here — none of their clinical data is shown to you.`}
-                </p>
-                <p className="mt-1 font-mono text-[12px] text-soot/70">hash {duplicate.hash}</p>
-              </div>
+            <SectionTitle>Centre</SectionTitle>
+            {centreOptions.length > 1 ? (
+              <Select ariaLabel="Centre" value={centreId} onChange={setCentreId} options={centreOptions} placeholder="— choose —" />
             ) : (
-              <div className="rounded-xl border border-sage-600/25 bg-sage-100 px-3 py-2.5">
-                <Badge tone="ok">No match found</Badge>
-                <p className="mt-1.5 text-xs text-soot">This identifier is new to the registry.</p>
-              </div>
+              <p className="text-sm text-ink">{session.centreName}</p>
             )}
-          </Card>
-
-          <Card>
-            <SectionTitle>The steps ahead</SectionTitle>
-            <ol className="space-y-1.5">
-              <li className="flex items-center gap-2.5 rounded-lg bg-forest-50 px-2.5 py-1.5">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-forest-500 text-[12px] font-bold text-white">1</span>
-                <span className="text-xs font-semibold text-forest-600">Demography — you are here</span>
-              </li>
-              {groups.map((g) => (
-                <li key={g.id} className="flex items-center gap-2.5 px-2.5 py-1">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cream text-[12px] font-bold text-soot/75">{g.no}</span>
-                  <span className="text-xs text-soot/80">{g.title}</span>
-                  <span className="ml-auto text-[12px] tabular-nums text-soot/60">
-                    {g.fields.filter((f) => f.type !== "computed").length} fields
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-3 border-t border-line pt-2.5 text-[13px] leading-relaxed text-soot/75">
-              Nothing is mandatory after this step — the record saves part-complete and shows a
-              completeness score, so data can be entered as it becomes available.
+            <p className="mt-2 text-[13px] text-soot/72">
+              The registry number is issued per centre, e.g. MUG-{centreOptions.find((c) => c.value === centreId)?.hint ?? session.centreCode}-000001.
             </p>
           </Card>
+          <button type="submit" disabled={busy || blocked} className="btn-primary w-full !py-2.5">
+            {busy ? "Saving…" : "Register patient"}
+          </button>
         </div>
+      </form>
+    </div>
+  );
+}
+
+/** What to do when the identity number is already registered. */
+function Duplicate({ lookup }: { lookup: PatientLookup }) {
+  const [permission, setPermission] = useState<"view" | "edit">("view");
+  const [reason, setReason] = useState("");
+  const [state, setState] = useState<"idle" | "busy" | "sent">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  if (lookup.status === "none") {
+    return <p className="mt-4 text-[13px] text-sage-700">✓ Not yet registered.</p>;
+  }
+  if (lookup.status === "visible") {
+    return (
+      <div className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-2.5 text-[13.5px] text-goldink/85">
+        This patient is already registered as <span className="font-mono font-semibold">{lookup.registry_no}</span>.{" "}
+        <Link href={`/patients/${lookup.patient_id}`} className="font-semibold underline underline-offset-2">Open the record</Link>
       </div>
+    );
+  }
+
+  async function send() {
+    if (!lookup.patient_id) return;
+    setState("busy"); setError(null);
+    try {
+      await api.requestPatientAccess(lookup.patient_id, permission, reason.trim());
+      setState("sent");
+      window.dispatchEvent(new Event("mugis:access-requests-changed"));
+    } catch (e) {
+      setError(errorText(e));
+      setState("idle");
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-3 text-[13.5px] text-goldink/85">
+      <p>This patient is already registered by another clinician. You cannot see that record, but you can ask for access.</p>
+      {state === "sent" ? (
+        <p className="mt-2 font-semibold">Request sent — you will be emailed when it is decided. Track it under Access Requests.</p>
+      ) : (
+        <div className="mt-3 grid gap-2 sm:grid-cols-[140px_1fr_auto] sm:items-end">
+          <div>
+            <label className="label">Access</label>
+            <Select ariaLabel="Access" value={permission} onChange={(v) => setPermission(v as "view" | "edit")}
+              options={[{ value: "view", label: "View" }, { value: "edit", label: "View and edit" }]} />
+          </div>
+          <div>
+            <label className="label">Reason (optional)</label>
+            <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} placeholder="e.g. Patient referred to me" />
+          </div>
+          <button type="button" onClick={send} disabled={state === "busy"} className="btn-primary">Request access</button>
+          {error && <p className="text-danger-700 sm:col-span-3">{error}</p>}
+        </div>
+      )}
     </div>
   );
 }

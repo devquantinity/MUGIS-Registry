@@ -1,260 +1,128 @@
 "use client";
 
 import Link from "next/link";
-import { useTitle } from "@/lib/useTitle";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useScoped } from "@/lib/useScoped";
-import { CENTRES, findCentre } from "@/lib/centres";
-import { requiredFieldIds } from "@/lib/parameters";
+import { useTitle } from "@/lib/useTitle";
+import { CLINICAL, useSession } from "@/lib/session";
+import { api, errorText, type Centre, type Page, type Patient } from "@/lib/api";
+import { ACCESS_LABEL } from "@/lib/patientAccess";
+import { ageSex, fmtDate } from "@/lib/format";
+import { Badge, Card, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { Select } from "@/components/Select";
-import { completeness, deriveStage, stageTone } from "@/lib/staging";
-import { canCreate, exportNeedsApproval } from "@/lib/access";
-import { ageFrom, fmtDate, maskMykad, toCsv, download } from "@/lib/format";
-import { makeXlsx, downloadBlob } from "@/lib/xlsx";
-import { Badge, Card, EmptyState, PageHeader, Progress, Table, Td, Th, Toast } from "@/components/ui";
 
-type SortKey = "registryNo" | "fullName" | "age" | "stage" | "completeness" | "updated";
+const PAGE_SIZE = 20;
 
+/** Patients this caller may see (GET /patients) — the database decides which. */
 export default function PatientsPage() {
   useTitle("Patients");
   const router = useRouter();
-  const { patients, episodes, hidden, session } = useScoped();
-  const req = useMemo(() => requiredFieldIds("gastric-adeno"), []);
+  const { session } = useSession();
   const [q, setQ] = useState("");
-  const [centre, setCentre] = useState("all");
-  const [stageF, setStageF] = useState("all");
-  const [sort, setSort] = useState<SortKey>("updated");
-  const [dir, setDir] = useState<"asc" | "desc">("desc");
-  const [reveal, setReveal] = useState(false);
+  const [query, setQuery] = useState("");
+  const [centreId, setCentreId] = useState("");
   const [page, setPage] = useState(1);
-  const [toast, setToast] = useState<string | null>(null);
+  const [items, setItems] = useState<Patient[] | null>(null);
+  const [meta, setMeta] = useState<Page | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [allCentres, setAllCentres] = useState<Centre[]>([]);
 
-  // Query handed over from the ⌘K palette — via URL (?q=) on navigation,
-  // and via event when this page is already mounted.
+  const clinical = !!session && CLINICAL.includes(session.role);
+  const isHead = session?.role === "head";
+
+  useEffect(() => { if (isHead) api.centres().then(setAllCentres).catch(() => undefined); }, [isHead]);
+  const centreOptions = useMemo(() => {
+    const list = isHead ? allCentres : session?.user.centres ?? [];
+    return [{ value: "", label: "All centres" }, ...list.map((c) => ({ value: c.id, label: c.name, hint: c.code }))];
+  }, [isHead, allCentres, session]);
+
+  // Debounce the search box.
   useEffect(() => {
-    try {
-      const fromUrl = new URLSearchParams(window.location.search).get("q");
-      if (fromUrl) { setQ(fromUrl); setPage(1); }
-    } catch { /* ignore */ }
-    const onApply = (e: Event) => {
-      const detail = (e as CustomEvent<string>).detail;
-      if (typeof detail === "string") { setQ(detail); setPage(1); }
-    };
-    window.addEventListener("mugis:apply-search", onApply);
-    return () => window.removeEventListener("mugis:apply-search", onApply);
-  }, []);
-  const perPage = 15;
+    const t = window.setTimeout(() => { setQuery(q.trim()); setPage(1); }, 250);
+    return () => window.clearTimeout(t);
+  }, [q]);
 
-  const rows = useMemo(() => {
-    const epByPatient = new Map(episodes.map((e) => [e.patientId, e]));
-    return patients.map((p) => {
-      const e = epByPatient.get(p.id);
-      const st = e ? deriveStage(e.data) : null;
-      const c = e ? completeness(e.data, req) : { pct: 0, filled: 0, total: req.length };
-      return {
-        p, e,
-        age: ageFrom(p.dob),
-        stage: st?.stage ?? null,
-        pct: c.pct,
-        updated: e?.updatedAt ?? p.updatedAt,
-      };
-    });
-  }, [patients, episodes, req]);
+  useEffect(() => {
+    if (!clinical) return;
+    let alive = true;
+    setError(null);
+    api.patients({ q: query || undefined, centre_id: centreId || undefined, page, page_size: PAGE_SIZE })
+      .then((r) => { if (alive) { setItems(r.items); setMeta(r.page); } })
+      .catch((e) => { if (alive) { setError(errorText(e)); setItems([]); } });
+    return () => { alive = false; };
+  }, [clinical, query, centreId, page]);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    let out = rows;
-    if (s) {
-      out = out.filter((r) =>
-        r.p.fullName.toLowerCase().includes(s) ||
-        r.p.registryNo.toLowerCase().includes(s) ||
-        r.p.mykad.toLowerCase().includes(s) ||
-        r.p.state.toLowerCase().includes(s) ||
-        r.p.ethnic.toLowerCase().includes(s));
-    }
-    if (centre !== "all") out = out.filter((r) => r.p.centreId === centre);
-    if (stageF !== "all") {
-      out = stageF === "none"
-        ? out.filter((r) => !r.stage)
-        : out.filter((r) => r.stage === stageF);
-    }
-    const mul = dir === "asc" ? 1 : -1;
-    return [...out].sort((a, b) => {
-      switch (sort) {
-        case "registryNo": return mul * a.p.registryNo.localeCompare(b.p.registryNo);
-        case "fullName": return mul * a.p.fullName.localeCompare(b.p.fullName);
-        case "age": return mul * ((a.age ?? -1) - (b.age ?? -1));
-        case "stage": return mul * String(a.stage ?? "ZZ").localeCompare(String(b.stage ?? "ZZ"));
-        case "completeness": return mul * (a.pct - b.pct);
-        default: return mul * (a.updated < b.updated ? -1 : 1);
-      }
-    });
-  }, [rows, q, centre, stageF, sort, dir]);
-
-  const pages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const view = filtered.slice((Math.min(page, pages) - 1) * perPage, Math.min(page, pages) * perPage);
-
-  function header(key: SortKey, label: string, align: "left" | "right" | "center" = "left") {
-    const active = sort === key;
+  if (!session) return null;
+  if (!clinical) {
     return (
-      <Th align={align}>
-        <button
-          onClick={() => { if (active) setDir(dir === "asc" ? "desc" : "asc"); else { setSort(key); setDir("asc"); } }}
-          className={"inline-flex items-center gap-1 hover:text-ink " + (active ? "text-ink" : "")}
-        >
-          {label}
-          {active && <span className="text-[11px]">{dir === "asc" ? "▲" : "▼"}</span>}
-        </button>
-      </Th>
+      <div className="mx-auto max-w-2xl">
+        <PageHeader title="Patients" />
+        <Card><p className="text-sm text-soot">System administrators do not work with patient records.</p></Card>
+      </div>
     );
   }
 
-  function exportRows() {
-    const headers = ["Registry No", "Name", "MyKad", "DOB", "Age", "Sex", "Ethnic", "State", "Centre", "Stage", "Completeness %"];
-    const data = filtered.map((r) => [
-      r.p.registryNo, r.p.fullName, hidden ? "—" : r.p.mykad, r.p.dob, r.age ?? "", r.p.sex,
-      r.p.ethnic, r.p.state, findCentre(r.p.centreId).code, r.stage ?? "", r.pct,
-    ]);
-    return { headers, data };
-  }
-
-  function exportCsv() {
-    const { headers, data } = exportRows();
-    download(`mugis-patients-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, data));
-    setToast(`Exported ${filtered.length} patient records to CSV`);
-  }
-
-  function exportXlsx() {
-    const { headers, data } = exportRows();
-    downloadBlob(`mugis-patients-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      makeXlsx("Patients", headers, data));
-    setToast(`Exported ${filtered.length} patient records to Excel`);
-  }
-
-  if (!session) return null;
+  const pages = meta ? Math.max(1, Math.ceil(meta.total / meta.page_size)) : 1;
 
   return (
     <div>
       <PageHeader
         title="Patients"
-        subtitle={`${filtered.length} of ${patients.length} records${hidden ? " · identifiers hidden for your role" : ""}`}
-        actions={
-          <>
-            {!hidden && (
-              <button onClick={() => setReveal((v) => !v)} className="btn-secondary">
-                {reveal ? "Hide MyKad" : "Reveal MyKad"}
-              </button>
-            )}
-            {!exportNeedsApproval(session) && <button onClick={exportCsv} className="btn-secondary">CSV</button>}
-            {!exportNeedsApproval(session) && <button onClick={exportXlsx} className="btn-secondary">Excel</button>}
-            {canCreate(session) && <Link href="/patients/new" className="btn-primary">New patient</Link>}
-          </>
-        }
+        subtitle="Every patient you may see: your own, those in your scope, and any you were granted access to."
+        actions={<Link href="/patients/new" className="btn-primary">New patient</Link>}
       />
 
-      <Card className="mb-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
-            <label className="label">Search</label>
-            <input className="input" placeholder="Name, registry number, MyKad, state…"
-              value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <input className="input max-w-sm" placeholder="Search name, registry number or identity number"
+          value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search patients" />
+        {centreOptions.length > 2 && (
+          <div className="w-64">
+            <Select ariaLabel="Centre" value={centreId} onChange={(v) => { setCentreId(v); setPage(1); }} options={centreOptions} />
           </div>
-          <div>
-            <label className="label">Centre</label>
-            <Select
-              ariaLabel="Filter by centre"
-              value={centre}
-              onChange={(v) => { setCentre(v); setPage(1); }}
-              options={[
-                { value: "all", label: "All centres" },
-                ...CENTRES.map((c) => ({ value: c.id, label: c.name, hint: c.code })),
-              ]}
-            />
-          </div>
-          <div>
-            <label className="label">Stage</label>
-            <Select
-              ariaLabel="Filter by stage"
-              value={stageF}
-              onChange={(v) => { setStageF(v); setPage(1); }}
-              options={[
-                { value: "all", label: "All stages" },
-                ...["0", "IA", "IB", "IIA", "IIB", "IIIA", "IIIB", "IIIC", "IV"].map((s) => ({
-                  value: s, label: `Stage ${s}`,
-                })),
-                { value: "none", label: "Not derived" },
-              ]}
-            />
-          </div>
-        </div>
-      </Card>
+        )}
+        {meta && <span className="ml-auto text-[13px] text-soot/72">{meta.total} patient{meta.total === 1 ? "" : "s"}</span>}
+      </div>
 
-      {view.length === 0 ? (
+      {error && <p className="mb-4 rounded-xl border border-danger-200 bg-danger-50 px-3 py-2.5 text-[13.5px] text-danger-700">{error}</p>}
+
+      {items === null ? (
+        <Card><p className="text-sm text-soot/72">Loading…</p></Card>
+      ) : items.length === 0 ? (
         <EmptyState
-          title="No patients match"
-          hint={patients.length === 0
-            ? "Your role only shows records you entered yourself. Add a patient to get started."
-            : "Try clearing the search or filters."}
-          action={canCreate(session) ? <Link href="/patients/new" className="btn-primary">New patient</Link> : undefined}
+          title={query ? "No patients match" : "No patients to show"}
+          hint={query ? "Try another name or number. Patients outside your scope do not appear here." : "Patients you register, those in your scope, and any you are granted access to appear here."}
+          action={!query ? <Link href="/patients/new" className="btn-primary">New patient</Link> : undefined}
         />
       ) : (
         <>
           <Table head={
             <tr>
-              {header("registryNo", "Registry no.")}
-              {header("fullName", "Patient")}
-              <Th>MyKad</Th>
-              {header("age", "Age", "center")}
-              <Th>Centre</Th>
-              {header("stage", "Stage")}
-              {header("completeness", "Complete", "center")}
-              <Th align="right">Updated</Th>
+              <Th>Registry no.</Th><Th>Name</Th><Th>Identity</Th><Th>Centre</Th><Th>Age · sex</Th><Th>Access</Th><Th align="right">Updated</Th>
             </tr>
-          } minWidth={880}>
-            {view.map((r) => (
-              <tr key={r.p.id} onClick={() => router.push(`/patients/${r.p.id}`)}
-                className="cursor-pointer transition-colors hover:bg-forest-50/40">
-                <Td>
-                  <Link href={`/patients/${r.p.id}`} className="font-semibold text-forest-500 hover:underline">
-                    {r.p.registryNo}
-                  </Link>
+          }>
+            {items.map((p) => (
+              <tr key={p.id} className="cursor-pointer hover:bg-cream/60" onClick={() => router.push(`/patients/${p.id}`)}>
+                <Td className="font-mono text-[13px]">
+                  <Link href={`/patients/${p.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{p.registry_no}</Link>
                 </Td>
-                <Td>
-                  <span className="font-medium text-ink">{r.p.fullName}</span>
-                  <span className="ml-2 text-[13px] text-soot/72">{r.p.ethnic} · {r.p.state}</span>
-                </Td>
-                <Td><span className="font-mono text-[13px] text-soot/80">{hidden ? "—" : maskMykad(r.p.mykad, reveal)}</span></Td>
-                <Td align="center"><span className="tabular-nums">{r.age ?? "—"}</span></Td>
-                <Td><span className="text-xs text-soot/80">{findCentre(r.p.centreId).code}</span></Td>
-                <Td><Badge tone={stageTone(r.stage)}>{r.stage ? `Stage ${r.stage}` : "—"}</Badge></Td>
-                <Td align="center">
-                  <div className="mx-auto w-20">
-                    <Progress value={r.pct} tone={r.pct >= 80 ? "info" : r.pct >= 50 ? "warn" : "bad"} />
-                    <span className="mt-1 block text-[12px] tabular-nums text-soot/75">{r.pct}%</span>
-                  </div>
-                </Td>
-                <Td align="right"><span className="text-xs text-soot/80">{fmtDate(r.updated)}</span></Td>
+                <Td className="font-medium text-ink">{p.full_name}</Td>
+                <Td className="font-mono text-[13px] text-soot">{p.id_number_masked ?? p.id_number ?? "—"}</Td>
+                <Td>{p.centre.code}</Td>
+                <Td>{ageSex(p.date_of_birth ?? "", p.sex ?? "") || "—"}</Td>
+                <Td><Badge tone={ACCESS_LABEL[p.access].tone}>{ACCESS_LABEL[p.access].text}</Badge></Td>
+                <Td align="right" className="text-[13px] text-soot/80">{fmtDate(p.updated_at)}</Td>
               </tr>
             ))}
           </Table>
-
           {pages > 1 && (
-            <div className="mt-3 flex items-center justify-between">
-              <p className="text-xs text-soot/75">
-                Showing {(Math.min(page, pages) - 1) * perPage + 1}–{Math.min(Math.min(page, pages) * perPage, filtered.length)} of {filtered.length}
-              </p>
-              <div className="flex gap-2">
-                <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}>Previous</button>
-                <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={page >= pages}
-                  onClick={() => setPage((p) => p + 1)}>Next</button>
-              </div>
+            <div className="mt-3 flex items-center justify-end gap-2 text-[13px]">
+              <button className="btn-ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
+              <span className="text-soot/72">Page {page} of {pages}</span>
+              <button className="btn-ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</button>
             </div>
           )}
         </>
       )}
-      <Toast message={toast} onDone={() => setToast(null)} />
     </div>
   );
 }
