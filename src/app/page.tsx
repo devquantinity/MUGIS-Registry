@@ -32,8 +32,9 @@ const AVAILABLE = [
   "Centres and user administration (System Admin)",
   "Patient demography: register, search, view, edit",
   "Duplicate check by MyKad / passport, and access requests",
+  "Cancer records: a form per cancer type, with progress",
 ];
-const COMING = ["Cancer episodes, staging and treatment", "Reports and data export", "Export approvals", "Audit trail"];
+const COMING = ["Computed staging (AJCC, NIH)", "Reports and data export", "Export approvals", "Audit trail"];
 
 /** Overview built only from live API numbers. */
 export default function DashboardPage() {

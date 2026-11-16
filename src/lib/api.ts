@@ -92,6 +92,8 @@ export type Patient = {
   full_name: string; id_type: "mykad" | "passport"; id_number?: string; id_number_masked?: string;
   date_of_birth?: string; sex?: string; ethnic?: string; state?: string;
   access: PatientAccess; can_edit: boolean; created_at: string; updated_at: string;
+  /** Cancer episodes with progress (no answers). */
+  episodes: EpisodeSummary[];
 };
 
 export type PatientInput = {
@@ -106,6 +108,44 @@ export type AccessRequest = {
   requester: { id: string; full_name?: string; email: string; role: ApiRole };
   permission: "view" | "edit"; status: "pending" | "approved" | "denied";
   reason?: string; decided_at?: string; decision_note?: string; created_at: string;
+};
+
+// ─── Cancer episodes ─────────────────────────────────────────────────────────
+//
+// A form is a JSON document per cancer type, versioned by the backend. Field
+// keys and option values never change; fields and options are retired, not
+// removed. See src/lib/episodeForm.ts for the rules the screens apply.
+
+export type FieldType = "text" | "textarea" | "number" | "date" | "select" | "multiselect";
+export type FormOption = { value: string; label: string; retired?: boolean };
+export type ShowIf = { field: string; in?: string[]; not_in?: string[] };
+export type FormField = {
+  key: string; label: string; type: FieldType; help?: string; unit?: string;
+  options?: FormOption[]; min?: number; max?: number; integer?: boolean; max_length?: number;
+  show_if?: ShowIf; retired?: boolean;
+};
+export type FormSection = { key: string; label: string; help?: string; retired?: boolean; fields: FormField[] };
+export type FormDefinition = { sections: FormSection[] };
+
+export type CancerType = { code: string; name: string; form_version: number };
+export type CancerForm = { code: string; name: string; version: number; created_at: string; form: FormDefinition };
+
+export type Answer = string | number | string[];
+export type Answers = Record<string, Answer>;
+
+export type SectionProgress = { key: string; filled: number; total: number };
+export type EpisodeProgress = { filled: number; total: number; percent: number; sections: SectionProgress[] };
+
+export type EpisodeSummary = {
+  id: string; patient_id: string; cancer_type: string; cancer_type_name: string;
+  /** The live form the progress was measured against. */
+  form_version: number; progress: EpisodeProgress; created_at: string; updated_at: string;
+};
+
+export type Episode = EpisodeSummary & {
+  data: Answers; can_edit: boolean; created_by: string; updated_by: string;
+  /** Answers the last save removed (hidden by a condition, or not on a new type's form). */
+  dropped?: string[];
 };
 
 // ─── Errors ──────────────────────────────────────────────────────────────────
@@ -334,6 +374,19 @@ export const api = {
     request<{ items: AccessRequest[]; page: Page }>("GET", `/patient-access-requests${qs(q)}`),
   decideAccess: (id: string, approve: boolean, note?: string) =>
     request<AccessRequest>("POST", `/patient-access-requests/${id}/${approve ? "approve" : "deny"}`, note ? { note } : {}),
+
+  // cancer episodes — forms are read by every signed-in role
+  cancerTypes: () => request<CancerType[]>("GET", "/cancer-types"),
+  cancerForm: (code: string) => request<CancerForm>("GET", `/cancer-types/${encodeURIComponent(code)}/form`),
+  patientEpisodes: (patientId: string) => request<EpisodeSummary[]>("GET", `/patients/${patientId}/episodes`),
+  createEpisode: (patientId: string, cancer_type: string, data?: Answers) =>
+    request<Episode>("POST", `/patients/${patientId}/episodes`, { cancer_type, data }),
+  episode: (id: string) => request<Episode>("GET", `/cancer-episodes/${id}`),
+  /** `data` is merged; a null value clears that answer. */
+  updateEpisode: (id: string, body: { cancer_type?: string; data?: Record<string, Answer | null> }) =>
+    request<Episode>("PATCH", `/cancer-episodes/${id}`, body),
+  updateCancerForm: (code: string, base_version: number, form: FormDefinition) =>
+    request<CancerForm>("PUT", `/admin/cancer-types/${encodeURIComponent(code)}/form`, { base_version, form }),
 
   // admin — users
   users: (q: { q?: string; status?: string; role?: string; centre_id?: string; page?: number; page_size?: number }) =>

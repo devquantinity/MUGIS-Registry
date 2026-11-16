@@ -8,7 +8,8 @@ import { CLINICAL, useSession } from "@/lib/session";
 import { api, errorText, type Page, type Patient } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
 import { ageSex, fmtDate } from "@/lib/format";
-import { Badge, Card, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { shortCancerType } from "@/lib/cancerTypes";
+import { Badge, Card, EmptyState, PageHeader, Progress, Table, Td, Th } from "@/components/ui";
 import { Select } from "@/components/Select";
 
 const PAGE_SIZE = 20;
@@ -94,7 +95,7 @@ export default function PatientsPage() {
         <>
           <Table head={
             <tr>
-              <Th>Registry no.</Th><Th>Name</Th><Th>Identity</Th><Th>Centre</Th><Th>Age · sex</Th><Th>Access</Th><Th align="right">Updated</Th>
+              <Th>Registry no.</Th><Th>Name</Th><Th>Identity</Th><Th>Centre</Th><Th>Age · sex</Th><Th>Cancer record</Th><Th>Access</Th><Th align="right">Updated</Th>
             </tr>
           }>
             {items.map((p) => (
@@ -106,6 +107,21 @@ export default function PatientsPage() {
                 <Td className="font-mono text-[13px] text-soot">{p.id_number_masked ?? p.id_number ?? "—"}</Td>
                 <Td>{p.centre.code}</Td>
                 <Td>{ageSex(p.date_of_birth ?? "", p.sex ?? "") || "—"}</Td>
+                <Td>
+                  {p.episodes.length === 0 ? <span className="text-soot/60">—</span> : (
+                    <div className="grid w-40 gap-1.5">
+                      {p.episodes.map((e) => (
+                        <Link key={e.id} href={`/episodes/${e.id}`} onClick={(ev) => ev.stopPropagation()} className="group block" title={`${e.cancer_type_name}: ${e.progress.filled}/${e.progress.total} fields`}>
+                          <div className="flex items-baseline justify-between text-[12.5px]">
+                            <span className="font-medium text-ink group-hover:underline">{shortCancerType(e.cancer_type, e.cancer_type_name)}</span>
+                            <span className="tabular-nums text-soot/80">{e.progress.percent}%</span>
+                          </div>
+                          <Progress value={e.progress.percent} tone={e.progress.percent >= 80 ? "info" : e.progress.percent >= 40 ? "warn" : "bad"} />
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </Td>
                 <Td><Badge tone={ACCESS_LABEL[p.access].tone}>{ACCESS_LABEL[p.access].text}</Badge></Td>
                 <Td align="right" className="text-[13px] text-soot/80">{fmtDate(p.updated_at)}</Td>
               </tr>

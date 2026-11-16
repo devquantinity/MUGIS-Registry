@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
 import { CLINICAL, useSession } from "@/lib/session";
-import { api, ApiError, errorText, type Patient, type PatientInput } from "@/lib/api";
+import { api, ApiError, errorText, type CancerType, type EpisodeSummary, type Patient, type PatientInput } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
 import { ageFrom, fmtDate, fmtDateTime, formatMykad } from "@/lib/format";
 import PatientForm, { type PatientFormValue } from "@/components/PatientForm";
-import { Badge, Card, Modal, PageHeader, SectionTitle } from "@/components/ui";
+import { Badge, Card, Modal, PageHeader, Progress, SectionTitle } from "@/components/ui";
+import { Select } from "@/components/Select";
 
 function toForm(p: Patient): PatientFormValue {
   return {
@@ -43,6 +44,7 @@ export default function PatientPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
+  const [opening, setOpening] = useState(false);
   useTitle(patient ? patient.full_name : "Patient record");
 
   const clinical = !!session && CLINICAL.includes(session.role);
@@ -161,15 +163,86 @@ export default function PatientPage() {
               <Item label="Last updated" value={fmtDateTime(patient.updated_at)} />
             </dl>
           </Card>
-          <Card>
-            <SectionTitle right={<Badge>Soon</Badge>}>Cancer episodes</SectionTitle>
-            <p className="text-[13.5px] text-soot/80">Episodes, staging and treatment come in the next phase.</p>
-          </Card>
+          <Episodes episodes={patient.episodes} canEdit={patient.can_edit} onOpen={() => setOpening(true)} />
         </div>
       </div>
 
       <RequestEdit open={asking} onClose={() => setAsking(false)} patientId={patient.id} />
+      {opening && <OpenEpisode patientId={patient.id} onClose={() => setOpening(false)} />}
     </div>
+  );
+}
+
+/** The patient's cancer records with how far each form is filled. */
+function Episodes({ episodes, canEdit, onOpen }: { episodes: EpisodeSummary[]; canEdit: boolean; onOpen: () => void }) {
+  return (
+    <Card>
+      <SectionTitle right={canEdit && episodes.length > 0
+        ? <button className="text-[13px] font-semibold text-forest-600 hover:underline" onClick={onOpen}>+ New record</button>
+        : undefined}>Cancer records</SectionTitle>
+      {episodes.length === 0 ? (
+        <div>
+          <p className="text-[13.5px] text-soot/80">
+            {canEdit ? "None yet. Open one with the suspected cancer type; its form shows what to record." : "None recorded."}
+          </p>
+          {canEdit && <button className="btn-primary mt-3" onClick={onOpen}>Open cancer record</button>}
+        </div>
+      ) : (
+        <ul className="grid gap-2">
+          {episodes.map((e) => (
+            <li key={e.id}>
+              <Link href={`/episodes/${e.id}`} className="block rounded-xl border border-line px-3 py-2.5 transition-colors hover:border-forest-500/50 hover:bg-cream/60">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-semibold text-ink">{e.cancer_type_name}</span>
+                  <span className="text-[13px] font-bold tabular-nums text-ink">{e.progress.percent}%</span>
+                </div>
+                <div className="mt-1.5"><Progress value={e.progress.percent} tone={e.progress.percent >= 80 ? "info" : e.progress.percent >= 40 ? "warn" : "bad"} /></div>
+                <p className="mt-1 text-[12.5px] text-soot/72">{e.progress.filled}/{e.progress.total} fields · updated {fmtDate(e.updated_at)}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+/** Pick the suspected cancer type and open a record for it. */
+function OpenEpisode({ patientId, onClose }: { patientId: string; onClose: () => void }) {
+  const router = useRouter();
+  const [types, setTypes] = useState<CancerType[] | null>(null);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.cancerTypes().then(setTypes).catch((e) => setError(errorText(e)));
+  }, []);
+
+  async function open() {
+    setBusy(true); setError(null);
+    try {
+      const ep = await api.createEpisode(patientId, code);
+      router.push(`/episodes/${ep.id}`);
+    } catch (e) {
+      setError(errorText(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Open cancer record">
+      <p className="text-sm text-soot">Choose the suspected cancer type. If it turns out different, you can change it later on the record.</p>
+      <label className="label mt-4">Suspected cancer type</label>
+      <Select ariaLabel="Suspected cancer type" value={code} onChange={setCode}
+        placeholder={types ? "— choose —" : "Loading…"}
+        options={(types ?? []).map((t) => ({ value: t.code, label: t.name }))} />
+      {error && <p className="mt-3 text-[13.5px] text-danger-700">{error}</p>}
+      <div className="mt-4 flex justify-end gap-2">
+        <button className="btn-ghost" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn-primary" onClick={open} disabled={busy || !code}>{busy ? "Opening…" : "Open record"}</button>
+      </div>
+    </Modal>
   );
 }
 

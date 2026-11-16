@@ -4,8 +4,20 @@
  * shadcn-style date picker — button trigger + popover calendar, no external
  * dependency (react-day-picker cannot be installed through the device
  * bridge; this reproduces its look and behaviour).
+ *
+ * The calendar is portalled to <body> and placed from the trigger's
+ * rectangle, like Select's panel: inside a card (whose backdrop-filter makes
+ * its own stacking context) it would otherwise sit under anything layered
+ * above the card — such as the sticky save bar on an episode form.
  */
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+const useMeasure = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const PANEL_W = 278;
+const PANEL_H = 372; // header, six weeks, footer
+const GAP = 6;
+const EDGE = 12;
 
 const MONTHS = ["January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
@@ -53,7 +65,35 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<{ y: number; m: number }>(() =>
     sel ? { y: sel.y, m: sel.m } : { y: now.getFullYear(), m: now.getMonth() });
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [box, setBox] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+
+  /** Below the trigger, or above it when there is more room there. */
+  const place = useCallback(() => {
+    const b = btnRef.current?.getBoundingClientRect();
+    if (!b) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const below = vh - b.bottom - GAP - EDGE;
+    const above = b.top - GAP - EDGE;
+    const left = Math.max(EDGE, Math.min(b.left, vw - EDGE - PANEL_W));
+    setBox(below < PANEL_H && above > below
+      ? { left, bottom: vh - b.top + GAP }
+      : { left, top: b.bottom + GAP });
+  }, []);
+
+  useMeasure(() => { if (open) place(); }, [open, place]);
+
+  useEffect(() => {
+    if (!open) return;
+    // capture: the scroll may happen in any ancestor, not just the window
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, place]);
 
   useEffect(() => {
     if (!open) return;
@@ -65,7 +105,9 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", onDown);
@@ -94,8 +136,9 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div className="relative">
       <button
+        ref={btnRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
@@ -119,8 +162,10 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
         )}
       </button>
 
-      {open && !disabled && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[278px] rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-3 shadow-raised">
+      {open && !disabled && box && createPortal(
+        <div ref={panelRef} role="dialog" aria-label="Choose a date"
+          style={{ position: "fixed", left: box.left, top: box.top, bottom: box.bottom, width: PANEL_W }}
+          className="z-[75] rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-3 shadow-raised">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" onClick={() => setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))}
               className="rounded-lg p-1.5 text-soot/75 hover:bg-cream hover:text-ink" aria-label="Previous month">
@@ -178,7 +223,8 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
               Today
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

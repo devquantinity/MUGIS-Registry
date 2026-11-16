@@ -183,7 +183,6 @@ const NAV: NavGroup[] = [
       { href: "/patients", label: "Patients", icon: ic(ICONS.patients), roles: CLINICAL },
       { href: "/patients/new", label: "New Patient", icon: ic(ICONS.add), roles: CLINICAL },
       { href: "/patients/access-requests", label: "Access Requests", icon: ic(ICONS.approvals), roles: CLINICAL },
-      { href: "/episodes", label: "Cancer Episodes", icon: ic(ICONS.episode), roles: CLINICAL, soon: true },
     ],
   },
   {
@@ -204,6 +203,7 @@ const NAV: NavGroup[] = [
       },
       { href: "/admin/users", label: "Users", icon: ic(ICONS.users), roles: ["admin"] },
       { href: "/admin/centres", label: "Centres", icon: ic(ICONS.centres), roles: ["admin"] },
+      { href: "/admin/forms", label: "Cancer Forms", icon: ic(ICONS.episode), roles: ["admin"] },
       {
         href: "/admin/audit",
         label: "Audit Trail",
