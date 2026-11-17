@@ -104,7 +104,7 @@ export default function DashboardPage() {
                   <li key={p.id}>
                     <Link href={`/patients/${p.id}`} className="flex items-center gap-3 py-2 hover:text-forest-600">
                       <span className="font-mono text-[13px] text-soot">{p.registry_no}</span>
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{p.full_name}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}</span>
                       <Badge tone={ACCESS_LABEL[p.access].tone}>{ACCESS_LABEL[p.access].text}</Badge>
                       <span className="hidden text-[13px] text-soot/72 sm:inline">{fmtDate(p.updated_at)}</span>
                     </Link>

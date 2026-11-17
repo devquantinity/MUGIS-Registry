@@ -13,7 +13,7 @@ type Box = "incoming" | "outgoing";
 const PAGE_SIZE = 20;
 
 const STATUS_TONE: Record<AccessRequest["status"], "warn" | "ok" | "bad"> = {
-  pending: "warn", approved: "ok", denied: "bad",
+  pending: "warn", approved: "ok", denied: "bad", revoked: "bad",
 };
 
 /**

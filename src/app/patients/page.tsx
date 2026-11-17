@@ -7,7 +7,7 @@ import { useTitle } from "@/lib/useTitle";
 import { CLINICAL, useSession } from "@/lib/session";
 import { api, errorText, type Page, type Patient } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
-import { ageSex, fmtDate } from "@/lib/format";
+import { fmtDate } from "@/lib/format";
 import { shortCancerType } from "@/lib/cancerTypes";
 import { Badge, Card, EmptyState, PageHeader, Progress, Table, Td, Th } from "@/components/ui";
 import { Select } from "@/components/Select";
@@ -71,7 +71,7 @@ export default function PatientsPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <input className="input max-w-sm" placeholder="Search name, registry number or identity number"
+        <input className="input max-w-sm" placeholder="Registry no. or patient ID — name / IC finds your own or shared patients"
           value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search patients" />
         {centreOptions.length > 2 && (
           <div className="w-64">
@@ -103,10 +103,10 @@ export default function PatientsPage() {
                 <Td className="font-mono text-[13px]">
                   <Link href={`/patients/${p.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{p.registry_no}</Link>
                 </Td>
-                <Td className="font-medium text-ink">{p.full_name}</Td>
+                <Td className="font-medium text-ink">{p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}</Td>
                 <Td className="font-mono text-[13px] text-soot">{p.id_number_masked ?? p.id_number ?? "—"}</Td>
                 <Td>{p.centre.code}</Td>
-                <Td>{ageSex(p.date_of_birth ?? "", p.sex ?? "") || "—"}</Td>
+                <Td>{[p.age_years !== null ? `${p.age_years}y` : "", p.sex ?? ""].filter(Boolean).join(" · ") || "—"}</Td>
                 <Td>
                   {p.episodes.length === 0 ? <span className="text-soot/60">—</span> : (
                     <div className="grid w-40 gap-1.5">

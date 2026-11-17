@@ -64,7 +64,7 @@ export default function PatientSearch({ open, onClose }: { open: boolean; onClos
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={onKey}
           disabled={!clinical}
-          placeholder={clinical ? "Search patients by name or registry number…" : "Patient search is for clinical roles"}
+          placeholder={clinical ? "Search by registry number, or name/IC for your own or shared patients…" : "Patient search is for clinical roles"}
           className="w-full border-b border-ink/[0.06] bg-transparent px-4 py-3.5 text-[15px] text-ink outline-none placeholder:text-soot/60"
         />
         <ul className="max-h-[50vh] overflow-y-auto p-1.5">
@@ -76,7 +76,7 @@ export default function PatientSearch({ open, onClose }: { open: boolean; onClos
                 className={"flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left " +
                   (i === sel ? "bg-forest-50 text-forest-700" : "text-ink hover:bg-ink/[0.04]")}
               >
-                <span className="min-w-0 truncate text-[14.5px] font-medium">{p.full_name}</span>
+                <span className="min-w-0 truncate text-[14.5px] font-medium">{p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}</span>
                 <span className="shrink-0 font-mono text-[12.5px] text-soot/75">{p.registry_no}</span>
               </button>
             </li>

@@ -7,14 +7,15 @@ import { useTitle } from "@/lib/useTitle";
 import { CLINICAL, useSession } from "@/lib/session";
 import { api, ApiError, errorText, type CancerType, type EpisodeSummary, type Patient, type PatientInput } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
-import { ageFrom, fmtDate, fmtDateTime, formatMykad } from "@/lib/format";
+import { fmtDate, fmtDateTime, formatMykad } from "@/lib/format";
 import PatientForm, { type PatientFormValue } from "@/components/PatientForm";
+import PatientAccessPanel from "@/components/PatientAccessPanel";
 import { Badge, Card, Modal, PageHeader, Progress, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/Select";
 
 function toForm(p: Patient): PatientFormValue {
   return {
-    full_name: p.full_name, id_type: p.id_type, id_number: p.id_number ?? "",
+    full_name: p.full_name ?? "", id_type: p.id_type, id_number: p.id_number ?? "",
     date_of_birth: p.date_of_birth ?? "", sex: p.sex ?? "", ethnic: p.ethnic ?? "", state: p.state ?? "",
   };
 }
@@ -45,7 +46,7 @@ export default function PatientPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [opening, setOpening] = useState(false);
-  useTitle(patient ? patient.full_name : "Patient record");
+  useTitle(patient ? (patient.full_name ?? patient.registry_no) : "Patient record");
 
   const clinical = !!session && CLINICAL.includes(session.role);
 
@@ -90,7 +91,8 @@ export default function PatientPage() {
   if (!patient) return <Card><p className="text-sm text-soot/72">Loading…</p></Card>;
 
   const badge = ACCESS_LABEL[patient.access];
-  const age = patient.date_of_birth ? ageFrom(patient.date_of_birth) : null;
+  const age = patient.age_years;
+  const restricted = !patient.full_access;
 
   function startEdit() {
     setForm(toForm(patient!));
@@ -118,13 +120,13 @@ export default function PatientPage() {
   return (
     <div>
       <PageHeader
-        title={patient.full_name}
+        title={patient.full_name ?? `Patient ${patient.registry_no}`}
         subtitle={`${patient.registry_no} · ${patient.centre.name}`}
         actions={
           editing ? null : patient.can_edit ? (
             <button className="btn-primary" onClick={startEdit}>Edit demography</button>
           ) : (
-            <button className="btn-secondary" onClick={() => setAsking(true)}>Request edit access</button>
+            <button className="btn-secondary" onClick={() => setAsking(true)}>{restricted ? "Request access" : "Request edit access"}</button>
           )
         }
       />
@@ -142,14 +144,32 @@ export default function PatientPage() {
               </div>
             </form>
           ) : (
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-              <Item label="Full name" value={patient.full_name} />
-              <Item label={patient.id_type === "mykad" ? "MyKad" : "Passport"} value={patient.id_number ? (patient.id_type === "mykad" ? formatMykad(patient.id_number) : patient.id_number) : patient.id_number_masked} mono />
-              <Item label="Date of birth" value={patient.date_of_birth ? `${fmtDate(patient.date_of_birth)}${age !== null ? ` (${age}y)` : ""}` : undefined} />
-              <Item label="Sex" value={patient.sex} />
-              <Item label="Ethnic" value={patient.ethnic} />
-              <Item label="State" value={patient.state} />
-            </dl>
+            restricted ? (
+              <>
+                <p className="mb-4 rounded-xl border border-line bg-cream/60 px-3 py-2.5 text-[13.5px] text-soot">
+                  Personal details are visible only to the doctor who added this patient and to colleagues they share it with.
+                  You can see the age, sex and cancer records. Use <span className="font-semibold">Request access</span> to ask for the rest.
+                </p>
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                  <Item label="Age" value={age !== null ? `${age} years` : undefined} />
+                  <Item label="Sex" value={patient.sex} />
+                  <Restricted label="Full name" />
+                  <Restricted label={patient.id_type === "mykad" ? "MyKad" : "Passport"} />
+                  <Restricted label="Date of birth" />
+                  <Restricted label="Ethnic" />
+                  <Restricted label="State" />
+                </dl>
+              </>
+            ) : (
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                <Item label="Full name" value={patient.full_name} />
+                <Item label={patient.id_type === "mykad" ? "MyKad" : "Passport"} value={patient.id_number ? (patient.id_type === "mykad" ? formatMykad(patient.id_number) : patient.id_number) : patient.id_number_masked} mono />
+                <Item label="Date of birth" value={patient.date_of_birth ? `${fmtDate(patient.date_of_birth)}${age !== null ? ` (${age}y)` : ""}` : undefined} />
+                <Item label="Sex" value={patient.sex} />
+                <Item label="Ethnic" value={patient.ethnic} />
+                <Item label="State" value={patient.state} />
+              </dl>
+            )
           )}
         </Card>
 
@@ -164,10 +184,11 @@ export default function PatientPage() {
             </dl>
           </Card>
           <Episodes episodes={patient.episodes} canEdit={patient.can_edit} onOpen={() => setOpening(true)} />
+          <PatientAccessPanel patientId={patient.id} />
         </div>
       </div>
 
-      <RequestEdit open={asking} onClose={() => setAsking(false)} patientId={patient.id} />
+      <RequestAccess open={asking} onClose={() => setAsking(false)} patientId={patient.id} canView={!restricted} />
       {opening && <OpenEpisode patientId={patient.id} onClose={() => setOpening(false)} />}
     </div>
   );
@@ -255,7 +276,18 @@ function Item({ label, value, mono }: { label: string; value?: string | null; mo
   );
 }
 
-function RequestEdit({ open, onClose, patientId }: { open: boolean; onClose: () => void; patientId: string }) {
+function Restricted({ label }: { label: string }) {
+  return (
+    <div>
+      <dt className="text-[13px] text-soot/72">{label}</dt>
+      <dd className="mt-0.5 text-sm italic text-soot/60">Restricted</dd>
+    </div>
+  );
+}
+
+/** Ask the owner for the personal data (view) or for editing too (edit). */
+function RequestAccess({ open, onClose, patientId, canView }: { open: boolean; onClose: () => void; patientId: string; canView: boolean }) {
+  const [permission, setPermission] = useState<"view" | "edit">(canView ? "edit" : "view");
   const [reason, setReason] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -263,7 +295,7 @@ function RequestEdit({ open, onClose, patientId }: { open: boolean; onClose: () 
   async function send() {
     setState("busy"); setError(null);
     try {
-      await api.requestPatientAccess(patientId, "edit", reason.trim());
+      await api.requestPatientAccess(patientId, permission, reason.trim());
       setState("sent");
       window.dispatchEvent(new Event("mugis:access-requests-changed"));
     } catch (e) {
@@ -273,7 +305,7 @@ function RequestEdit({ open, onClose, patientId }: { open: boolean; onClose: () 
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Request edit access">
+    <Modal open={open} onClose={onClose} title={canView ? "Request edit access" : "Request access"}>
       {state === "sent" ? (
         <>
           <p className="text-sm text-ink">Request sent. You will be emailed when it is decided; track it under <Link href="/patients/access-requests" className="font-semibold text-forest-600 underline underline-offset-2">Access Requests</Link>.</p>
@@ -282,6 +314,18 @@ function RequestEdit({ open, onClose, patientId }: { open: boolean; onClose: () 
       ) : (
         <>
           <p className="text-sm text-soot">The clinician who registered this patient decides. If they have left, a Head of Department of the centre does.</p>
+          {!canView && (
+            <div className="mt-4 grid gap-2 text-[13.5px] text-ink">
+              <label className="flex items-center gap-2">
+                <input type="radio" name="req-permission" checked={permission === "view"} onChange={() => setPermission("view")} />
+                View — see the name and identity number
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="req-permission" checked={permission === "edit"} onChange={() => setPermission("edit")} />
+                View and edit — also update the patient and continue the cancer records
+              </label>
+            </div>
+          )}
           <label className="label mt-4">Reason (optional)</label>
           <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} placeholder="e.g. Taking over follow-up" />
           {error && <p className="mt-3 text-[13.5px] text-danger-700">{error}</p>}

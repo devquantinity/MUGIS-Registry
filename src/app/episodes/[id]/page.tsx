@@ -34,7 +34,7 @@ export default function EpisodePage() {
   const [fieldError, setFieldError] = useState<{ key: string; text: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [retyping, setRetyping] = useState(false);
-  useTitle(patient ? `${patient.full_name} · ${episode?.cancer_type_name ?? "Record"}` : "Cancer record");
+  useTitle(patient ? `${patient.full_name ?? patient.registry_no} · ${episode?.cancer_type_name ?? "Record"}` : "Cancer record");
 
   const clinical = !!session && CLINICAL.includes(session.role);
 
@@ -158,7 +158,7 @@ export default function EpisodePage() {
     <div>
       <PageHeader
         title={episode.cancer_type_name}
-        subtitle={patient ? `${patient.full_name} · ${patient.registry_no} · updated ${fmtDateTime(episode.updated_at)}` : `Updated ${fmtDateTime(episode.updated_at)}`}
+        subtitle={patient ? `${patient.full_name ? `${patient.full_name} · ` : ""}${patient.registry_no} · updated ${fmtDateTime(episode.updated_at)}` : `Updated ${fmtDateTime(episode.updated_at)}`}
         actions={
           <div className="flex flex-wrap gap-2">
             <Link href={`/patients/${episode.patient_id}`} className="btn-secondary">Patient record</Link>

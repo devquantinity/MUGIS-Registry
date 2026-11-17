@@ -50,7 +50,7 @@ export default function NewPatientPage() {
     );
   }
 
-  const blocked = lookup?.status === "visible" || lookup?.status === "not_visible";
+  const blocked = lookup?.status === "visible" || lookup?.status === "exists";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,7 +81,7 @@ export default function NewPatientPage() {
         <Card className="lg:col-span-2">
           <SectionTitle>Demography</SectionTitle>
           <PatientForm value={form} onChange={setForm} />
-          {lookup && <Duplicate lookup={lookup} />}
+          {lookup && <Duplicate lookup={lookup} idType={form.id_type} idNumber={form.id_number} />}
           {error && !blocked && <p className="mt-4 rounded-xl border border-danger-200 bg-danger-50 px-3 py-2.5 text-[13.5px] text-danger-700">{error}</p>}
         </Card>
 
@@ -107,7 +107,7 @@ export default function NewPatientPage() {
 }
 
 /** What to do when the identity number is already registered. */
-function Duplicate({ lookup }: { lookup: PatientLookup }) {
+function Duplicate({ lookup, idType, idNumber }: { lookup: PatientLookup; idType: "mykad" | "passport"; idNumber: string }) {
   const [permission, setPermission] = useState<"view" | "edit">("view");
   const [reason, setReason] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "sent">("idle");
@@ -126,10 +126,10 @@ function Duplicate({ lookup }: { lookup: PatientLookup }) {
   }
 
   async function send() {
-    if (!lookup.patient_id) return;
     setState("busy"); setError(null);
     try {
-      await api.requestPatientAccess(lookup.patient_id, permission, reason.trim());
+      // By identity number: which record it is stays hidden until access is granted.
+      await api.requestAccessByIdentity({ id_type: idType, id_number: idNumber, permission, reason: reason.trim() });
       setState("sent");
       window.dispatchEvent(new Event("mugis:access-requests-changed"));
     } catch (e) {
@@ -140,7 +140,7 @@ function Duplicate({ lookup }: { lookup: PatientLookup }) {
 
   return (
     <div className="mt-4 rounded-xl border border-gold-300/60 bg-gold-100/60 px-3 py-3 text-[13.5px] text-goldink/85">
-      <p>This patient is already registered by another clinician. You cannot see that record, but you can ask for access.</p>
+      <p>This patient is already registered by another doctor. Their details stay with that doctor, but you can ask for access.</p>
       {state === "sent" ? (
         <p className="mt-2 font-semibold">Request sent — you will be emailed when it is decided. Track it under Access Requests.</p>
       ) : (

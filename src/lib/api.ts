@@ -87,10 +87,16 @@ export const STATE_VALUES = ["Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sem
 
 export type PatientAccess = "owner" | "granted_edit" | "granted_view" | "scope";
 
+/**
+ * Personal data (name, identity number, date of birth, ethnicity, state) is
+ * null unless `full_access`: the caller added the patient or was given access.
+ * Everyone else who sees the patient gets age, sex and the cancer records.
+ */
 export type Patient = {
   id: string; registry_no: string; centre: { id: string; code: string; name: string }; owner_id: string;
-  full_name: string; id_type: "mykad" | "passport"; id_number?: string; id_number_masked?: string;
-  date_of_birth?: string; sex?: string; ethnic?: string; state?: string;
+  full_access: boolean; age_years: number | null;
+  full_name: string | null; id_type: "mykad" | "passport"; id_number?: string | null; id_number_masked?: string | null;
+  date_of_birth?: string | null; sex?: string; ethnic?: string | null; state?: string | null;
   access: PatientAccess; can_edit: boolean; created_at: string; updated_at: string;
   /** Cancer episodes with progress (no answers). */
   episodes: EpisodeSummary[];
@@ -101,12 +107,14 @@ export type PatientInput = {
   sex?: string; ethnic?: string; state?: string; centre_id?: string;
 };
 
-export type PatientLookup = { status: "none" | "visible" | "not_visible"; patient_id?: string; registry_no?: string };
+/** `exists`: someone else's patient — nothing else is revealed; request access by identity number. */
+export type PatientLookup = { status: "none" | "visible" | "exists"; patient_id?: string; registry_no?: string };
 
 export type AccessRequest = {
-  id: string; patient_id: string; registry_no?: string; patient_name?: string;
+  /** Absent for your own request until you have full access (a request by identity number never names the record). */
+  id: string; patient_id?: string; registry_no?: string; patient_name?: string;
   requester: { id: string; full_name?: string; email: string; role: ApiRole };
-  permission: "view" | "edit"; status: "pending" | "approved" | "denied";
+  permission: "view" | "edit"; status: "pending" | "approved" | "denied" | "revoked";
   reason?: string; decided_at?: string; decision_note?: string; created_at: string;
 };
 
@@ -370,6 +378,14 @@ export const api = {
     request<PatientLookup>("POST", "/patients/lookup", { id_type, id_number }),
   requestPatientAccess: (id: string, permission: "view" | "edit", reason?: string) =>
     request<AccessRequest>("POST", `/patients/${id}/access-requests`, { permission, reason: reason || undefined }),
+  requestAccessByIdentity: (body: { id_type: "mykad" | "passport"; id_number: string; permission: "view" | "edit"; reason?: string }) =>
+    request<AccessRequest>("POST", "/patient-access-requests", { ...body, reason: body.reason || undefined }),
+  /** Owner (or a departed owner's HOD): who holds or has asked for access. 403 for anyone else. */
+  patientAccess: (id: string) => request<{ items: AccessRequest[] }>("GET", `/patients/${id}/access`),
+  sharePatientAccess: (id: string, email: string, permission: "view" | "edit") =>
+    request<AccessRequest>("POST", `/patients/${id}/access`, { email, permission }),
+  revokePatientAccess: (id: string, grantId: string) =>
+    request<AccessRequest>("DELETE", `/patients/${id}/access/${grantId}`),
   accessRequests: (q: { box: "incoming" | "outgoing"; status?: string; page?: number; page_size?: number }) =>
     request<{ items: AccessRequest[]; page: Page }>("GET", `/patient-access-requests${qs(q)}`),
   decideAccess: (id: string, approve: boolean, note?: string) =>
