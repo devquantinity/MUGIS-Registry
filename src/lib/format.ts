@@ -108,6 +108,32 @@ export function formatMykad(raw: string): string {
 }
 
 /**
+ * MyKad: YY (00-99), MM (01-12), DD valid for that month (Feb allows 29 —
+ * no century, so no finer leap-year check), then 6 digits. Mirrors the
+ * server (mugis-backend internal/service/identity.go).
+ */
+const MYKAD_RE =
+  /^\d{2}(?:(?:0[13578]|1[02])(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)(?:0[1-9]|[12]\d|30)|02(?:0[1-9]|[12]\d))\d{6}$/;
+
+export function isValidMykad(raw: string): boolean {
+  return MYKAD_RE.test(raw.replace(/[\s-]/g, ""));
+}
+
+/** Why a MyKad number is wrong, or null when fine (or still being typed). */
+export function mykadProblem(raw: string): string | null {
+  const d = raw.replace(/\D/g, "");
+  if (d.length >= 4) {
+    const mm = Number(d.slice(2, 4));
+    if (mm < 1 || mm > 12) return "Digits 3–4 are the birth month and must be 01–12.";
+  }
+  if (d.length >= 6 && !MYKAD_RE.test(d.padEnd(12, "0"))) {
+    return "Digits 5–6 are the birth day and are not valid for that month.";
+  }
+  if (d.length === 12 && !MYKAD_RE.test(d)) return "Not a valid MyKad number.";
+  return null;
+}
+
+/**
  * Identity encoded in a MyKad number: YYMMDD birth date (century inferred,
  * never in the future) and sex from the last digit (odd = male).
  */

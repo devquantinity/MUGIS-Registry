@@ -1,7 +1,7 @@
 "use client";
 
 import { ETHNIC_VALUES, SEX_VALUES, STATE_VALUES } from "@/lib/api";
-import { ageFrom, formatMykad, mykadIdentity } from "@/lib/format";
+import { ageFrom, formatMykad, isValidMykad, mykadIdentity, mykadProblem } from "@/lib/format";
 import { DatePicker } from "@/components/DatePicker";
 import { Select } from "@/components/Select";
 
@@ -22,7 +22,14 @@ export const emptyPatient: PatientFormValue = {
 /** True once the identity number is complete enough to look up. */
 export function identityComplete(v: PatientFormValue): boolean {
   const digits = v.id_number.replace(/[\s-]/g, "");
-  return v.id_type === "mykad" ? /^\d{12}$/.test(digits) : /^[A-Za-z0-9]{5,20}$/.test(digits);
+  return v.id_type === "mykad" ? isValidMykad(digits) : /^[A-Za-z0-9]{5,20}$/.test(digits);
+}
+
+/** Message for the identity number, or null when fine or empty. */
+export function identityProblem(v: PatientFormValue): string | null {
+  if (v.id_type === "mykad") return mykadProblem(v.id_number);
+  const s = v.id_number.replace(/[\s-]/g, "");
+  return s && !/^[A-Za-z0-9]{5,20}$/.test(s) ? "A passport number has 5 to 20 letters and digits." : null;
 }
 
 /**
@@ -49,6 +56,7 @@ export default function PatientForm({ value, onChange, lockIdentity }: {
     });
   }
 
+  const idProblem = identityProblem(value);
   const age = value.date_of_birth ? ageFrom(value.date_of_birth) : null;
   const today = new Date().toISOString().slice(0, 10);
 
@@ -69,8 +77,10 @@ export default function PatientForm({ value, onChange, lockIdentity }: {
         <label className="label">{value.id_type === "mykad" ? "MyKad number" : "Passport number"} <span className="text-danger-600">*</span></label>
         <input className="input font-mono" value={value.id_number} onChange={(e) => onIdNumber(e.target.value)}
           inputMode={value.id_type === "mykad" ? "numeric" : "text"}
-          placeholder={value.id_type === "mykad" ? "000000-00-0000" : "A12345678"} spellCheck={false} />
-        {value.id_type === "mykad" && <p className="mt-1 text-[13px] text-soot/72">Date of birth and sex fill in from the number.</p>}
+          placeholder={value.id_type === "mykad" ? "000000-00-0000" : "A12345678"} spellCheck={false}
+          aria-invalid={!!idProblem} />
+        {idProblem && <p className="mt-1 text-[13px] text-danger-600" role="alert">{idProblem}</p>}
+        {!idProblem && value.id_type === "mykad" && <p className="mt-1 text-[13px] text-soot/72">Date of birth and sex fill in from the number.</p>}
       </div>
       <div>
         <label className="label">Date of birth</label>

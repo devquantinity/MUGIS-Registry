@@ -4,6 +4,7 @@
  * binding) so most mistakes are caught before sending; the server still
  * checks everything, and its refusals are mapped back onto the fields here.
  */
+import { isValidMykad, mykadProblem } from "@/lib/format";
 import { ApiError, errorText } from "@/lib/api";
 import { passwordProblems } from "@/components/AuthFrame";
 
@@ -42,7 +43,7 @@ export function validateRegister(f: RegisterForm, required: boolean): FieldError
   need("id_number", f.id_type === "passport" ? "Enter your passport number." : "Enter your MyKad number.");
   const id = f.id_number.trim().replace(/[\s-]/g, "").toUpperCase();
   if (id) {
-    if (f.id_type === "mykad" && !/^\d{12}$/.test(id)) e.id_number = "A MyKad number has 12 digits, e.g. 900101-14-5678.";
+    if (f.id_type === "mykad" && !isValidMykad(id)) e.id_number = mykadProblem(id) ?? "A MyKad number has 12 digits, e.g. 900101-14-5678.";
     if (f.id_type === "passport" && !/^[A-Z0-9]{5,20}$/.test(id)) e.id_number = "A passport number has 5 to 20 letters and digits.";
   }
 

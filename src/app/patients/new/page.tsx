@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
 import { CLINICAL, useSession } from "@/lib/session";
 import { api, ApiError, errorText, type PatientLookup } from "@/lib/api";
-import PatientForm, { emptyPatient, identityComplete, type PatientFormValue } from "@/components/PatientForm";
+import PatientForm, { emptyPatient, identityComplete, identityProblem, type PatientFormValue } from "@/components/PatientForm";
 import { Card, PageHeader, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/Select";
 
@@ -56,6 +56,8 @@ export default function NewPatientPage() {
     e.preventDefault();
     if (busy) return;
     if (!form.full_name.trim() || !form.id_number.trim()) { setError("Full name and identity number are required."); return; }
+    const idProblem = identityProblem(form);
+    if (idProblem || !identityComplete(form)) { setError(idProblem ?? "Enter a complete identity number."); return; }
     setBusy(true); setError(null);
     try {
       const p = await api.createPatient({
