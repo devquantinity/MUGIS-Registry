@@ -127,4 +127,4 @@ src/lib/
 - Oesophageal Adenocarcinoma, Oesophageal SCC and GIST are Phase 2.
 - Trainee logbook is Phase 2.
 
-v1.0.0+1
+v1.0.2
