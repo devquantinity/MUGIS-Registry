@@ -100,7 +100,11 @@ export type Patient = {
   access: PatientAccess; can_edit: boolean; created_at: string; updated_at: string;
   /** Cancer episodes with progress (no answers). */
   episodes: EpisodeSummary[];
+  /** The most cancer records a patient may hold (registry setting); no new one at this count. */
+  cancer_record_limit: number;
 };
+
+export type RegistrySettings = { max_cancer_records_per_patient: number; updated_at: string };
 
 export type PatientInput = {
   full_name?: string; id_type?: "mykad" | "passport"; id_number?: string; date_of_birth?: string;
@@ -401,6 +405,10 @@ export const api = {
   /** `data` is merged; a null value clears that answer. */
   updateEpisode: (id: string, body: { cancer_type?: string; data?: Record<string, Answer | null> }) =>
     request<Episode>("PATCH", `/cancer-episodes/${id}`, body),
+  /** Registry-wide settings — SYSTEM_ADMIN only. */
+  registrySettings: () => request<RegistrySettings>("GET", "/admin/settings"),
+  updateRegistrySettings: (body: { max_cancer_records_per_patient?: number }) =>
+    request<RegistrySettings>("PATCH", "/admin/settings", body),
   updateCancerForm: (code: string, base_version: number, form: FormDefinition) =>
     request<CancerForm>("PUT", `/admin/cancer-types/${encodeURIComponent(code)}/form`, { base_version, form }),
 

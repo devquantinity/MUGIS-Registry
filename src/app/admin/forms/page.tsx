@@ -121,6 +121,8 @@ export default function CancerFormsPage() {
         {base && <span className="text-[13px] text-soot/72">Version {base.version} · saved {fmtDateTime(base.created_at)}</span>}
       </div>
 
+      <RecordLimit />
+
       <p className="mb-4 rounded-xl border border-line bg-cream/70 px-3 py-2.5 text-[13.5px] text-soot">
         Fields and choices that are already saved can be renamed or <b>retired</b> (hidden from new entry; answers already
         recorded keep showing), but not deleted or changed to another type. Retiring is undone by ticking it back.
@@ -376,5 +378,54 @@ function AddField({ taken, earlier, onAdd, onClose }: {
         <button className="btn-primary" disabled={!!problem} onClick={add}>Add field</button>
       </div>
     </Modal>
+  );
+}
+
+/** How many cancer records one patient may hold (registry setting, 1–20). */
+function RecordLimit() {
+  const [saved, setSaved] = useState<number | null>(null);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    api.registrySettings()
+      .then((s) => { setSaved(s.max_cancer_records_per_patient); setValue(String(s.max_cancer_records_per_patient)); })
+      .catch((e) => setMsg({ ok: false, text: errorText(e) }));
+  }, []);
+
+  const n = Number(value);
+  const valid = Number.isInteger(n) && n >= 1 && n <= 20;
+
+  async function save() {
+    if (!valid || busy) return;
+    setBusy(true); setMsg(null);
+    try {
+      const s = await api.updateRegistrySettings({ max_cancer_records_per_patient: n });
+      setSaved(s.max_cancer_records_per_patient);
+      setMsg({ ok: true, text: "Saved." });
+    } catch (e) {
+      setMsg({ ok: false, text: errorText(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="mb-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="label" htmlFor="record-limit">Cancer records per patient</label>
+          <input id="record-limit" className="input !w-24" type="number" min={1} max={20} value={value}
+            onChange={(e) => { setValue(e.target.value); setMsg(null); }} disabled={saved === null} />
+        </div>
+        <button className="btn-primary" onClick={save} disabled={busy || !valid || n === saved}>{busy ? "Saving…" : "Save"}</button>
+        <p className="min-w-0 flex-1 text-[13px] text-soot/80">
+          The most cancer records one patient can have (1–20). Lowering it keeps records that already exist; it only stops new ones.
+        </p>
+      </div>
+      {!valid && value !== "" && <p className="mt-2 text-[13px] text-danger-700">Enter a whole number from 1 to 20.</p>}
+      {msg && <p className={`mt-2 text-[13px] ${msg.ok ? "text-sage-700" : "text-danger-700"}`}>{msg.text}</p>}
+    </Card>
   );
 }

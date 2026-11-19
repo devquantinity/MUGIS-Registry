@@ -8,7 +8,7 @@ import { CLINICAL, useSession } from "@/lib/session";
 import { api, ApiError, errorText, type CancerType, type EpisodeSummary, type Patient, type PatientInput } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
 import { fmtDate, fmtDateTime, formatMykad } from "@/lib/format";
-import PatientForm, { type PatientFormValue } from "@/components/PatientForm";
+import PatientForm, { identityComplete, identityProblem, type PatientFormValue } from "@/components/PatientForm";
 import PatientAccessPanel from "@/components/PatientAccessPanel";
 import { Badge, Card, Modal, PageHeader, Progress, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/Select";
@@ -106,6 +106,10 @@ export default function PatientPage() {
     const body = changes(toForm(patient!), form);
     if (Object.keys(body).length === 0) { setEditing(false); return; }
     if (body.full_name === "" || body.id_number === "") { setSaveError("Full name and identity number are required."); return; }
+    if (body.id_number !== undefined) {
+      const idProblem = identityProblem(form);
+      if (idProblem || !identityComplete(form)) { setSaveError(idProblem ?? "Enter a complete identity number."); return; }
+    }
     setSaving(true); setSaveError(null);
     try {
       setPatient(await api.updatePatient(patient!.id, body));
@@ -183,7 +187,7 @@ export default function PatientPage() {
               <Item label="Last updated" value={fmtDateTime(patient.updated_at)} />
             </dl>
           </Card>
-          <Episodes episodes={patient.episodes} canEdit={patient.can_edit} onOpen={() => setOpening(true)} />
+          <Episodes episodes={patient.episodes} canEdit={patient.can_edit} limit={patient.cancer_record_limit} onOpen={() => setOpening(true)} />
           <PatientAccessPanel patientId={patient.id} />
         </div>
       </div>
@@ -195,11 +199,15 @@ export default function PatientPage() {
 }
 
 /** The patient's cancer records with how far each form is filled. */
-function Episodes({ episodes, canEdit, onOpen }: { episodes: EpisodeSummary[]; canEdit: boolean; onOpen: () => void }) {
+function Episodes({ episodes, canEdit, limit, onOpen }: { episodes: EpisodeSummary[]; canEdit: boolean; limit: number; onOpen: () => void }) {
+  // The registry allows `limit` cancer records per patient (a System Admin setting).
+  const full = episodes.length >= limit;
   return (
     <Card>
       <SectionTitle right={canEdit && episodes.length > 0
-        ? <button className="text-[13px] font-semibold text-forest-600 hover:underline" onClick={onOpen}>+ New record</button>
+        ? <button className="text-[13px] font-semibold text-forest-600 hover:underline disabled:cursor-not-allowed disabled:text-soot/45 disabled:no-underline"
+            onClick={onOpen} disabled={full}
+            title={full ? `A patient can have ${limit === 1 ? "one cancer record" : `up to ${limit} cancer records`}` : undefined}>+ New record</button>
         : undefined}>Cancer records</SectionTitle>
       {episodes.length === 0 ? (
         <div>
