@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import LoginScreen from "@/components/LoginScreen";
 import EnrolTwoFactor from "@/components/EnrolTwoFactor";
-import { api, errorText, API_ROLE_LABELS } from "@/lib/api";
+import { api, errorText, API_BASE, API_ROLE_LABELS } from "@/lib/api";
 import PatientSearch from "@/components/PatientSearch";
 import { CLINICAL, SessionProvider, useSession, type Role } from "@/lib/session";
 import { Modal } from "@/components/ui";
@@ -472,6 +472,35 @@ function AppearanceControls() {
   );
 }
 
+/* Running backend version, from GET /health. Fetched once per page load. */
+let versionPromise: Promise<string> | null = null;
+function loadVersion(): Promise<string> {
+  versionPromise ??= fetch(`${API_BASE}/health`)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    .then((j) => (typeof j?.data?.version === "string" && j.data.version ? j.data.version : "—"))
+    .catch(() => {
+      versionPromise = null; // retry on the next mount
+      return "—";
+    });
+  return versionPromise;
+}
+
+function VersionLabel() {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    loadVersion().then((v) => live && setVersion(v));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return (
+    <p className="px-4 pb-3 text-[11px] text-white/45" title="Backend version">
+      Version {version ?? "…"}
+    </p>
+  );
+}
+
 /* Desktop sidebar — lives directly on the brand gradient */
 function Sidebar() {
   return (
@@ -487,6 +516,7 @@ function Sidebar() {
       <div className="p-3">
         <ProfileRow />
       </div>
+      <VersionLabel />
     </aside>
   );
 }
@@ -525,6 +555,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
         <div className="bottom-safe p-2.5">
           <ProfileRow onNavigate={onClose} />
         </div>
+        <VersionLabel />
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ The app signs in against the MUGIS backend (`mugis-backend`). Start that
 first (it listens on http://localhost:8080 by default), then:
 
 ```bash
-cp .env.example .env          # NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+cp .env.example .env          # empty NEXT_PUBLIC_API_BASE_URL + API_PROXY_TARGET=http://localhost:8080
 npm install
 npm run dev                   # reads .env
 npm run dev:staging           # reads .env.staging
