@@ -15,7 +15,7 @@ import { Select } from "@/components/Select";
 
 function toForm(p: Patient): PatientFormValue {
   return {
-    full_name: p.full_name ?? "", id_type: p.id_type, id_number: p.id_number ?? "",
+    full_name: p.full_name ?? "", id_type: p.id_type ?? "mykad", id_number: p.id_number ?? "",
     date_of_birth: p.date_of_birth ?? "", sex: p.sex ?? "", ethnic: p.ethnic ?? "", state: p.state ?? "",
   };
 }
@@ -158,7 +158,7 @@ export default function PatientPage() {
                   <Item label="Age" value={age !== null ? `${age} years` : undefined} />
                   <Item label="Sex" value={patient.sex} />
                   <Restricted label="Full name" />
-                  <Restricted label={patient.id_type === "mykad" ? "MyKad" : "Passport"} />
+                  <Restricted label="Identity number" />
                   <Restricted label="Date of birth" />
                   <Restricted label="Ethnic" />
                   <Restricted label="State" />

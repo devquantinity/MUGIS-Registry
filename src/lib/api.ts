@@ -95,7 +95,7 @@ export type PatientAccess = "owner" | "granted_edit" | "granted_view" | "scope";
 export type Patient = {
   id: string; registry_no: string; centre: { id: string; code: string; name: string }; owner_id: string;
   full_access: boolean; age_years: number | null;
-  full_name: string | null; id_type: "mykad" | "passport"; id_number?: string | null; id_number_masked?: string | null;
+  full_name: string | null; id_type: "mykad" | "passport" | null; id_number?: string | null; id_number_masked?: string | null;
   date_of_birth?: string | null; sex?: string; ethnic?: string | null; state?: string | null;
   access: PatientAccess; can_edit: boolean; created_at: string; updated_at: string;
   /** Cancer episodes with progress (no answers). */
