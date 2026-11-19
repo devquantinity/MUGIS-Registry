@@ -10,6 +10,7 @@ import { ACCESS_LABEL } from "@/lib/patientAccess";
 import { fmtDate, fmtDateTime, formatMykad } from "@/lib/format";
 import PatientForm, { identityComplete, identityProblem, type PatientFormValue } from "@/components/PatientForm";
 import PatientAccessPanel from "@/components/PatientAccessPanel";
+import RemoveEpisodeDialog from "@/components/RemoveEpisodeDialog";
 import { Badge, Card, Modal, PageHeader, Progress, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/Select";
 
@@ -46,6 +47,7 @@ export default function PatientPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [opening, setOpening] = useState(false);
+  const [removing, setRemoving] = useState<EpisodeSummary | null>(null);
   useTitle(patient ? (patient.full_name ?? patient.registry_no) : "Patient record");
 
   const clinical = !!session && CLINICAL.includes(session.role);
@@ -187,19 +189,24 @@ export default function PatientPage() {
               <Item label="Last updated" value={fmtDateTime(patient.updated_at)} />
             </dl>
           </Card>
-          <Episodes episodes={patient.episodes} canEdit={patient.can_edit} limit={patient.cancer_record_limit} onOpen={() => setOpening(true)} />
+          <Episodes episodes={patient.episodes} canEdit={patient.can_edit} limit={patient.cancer_record_limit}
+            onOpen={() => setOpening(true)} onRemove={setRemoving} />
           <PatientAccessPanel patientId={patient.id} />
         </div>
       </div>
 
       <RequestAccess open={asking} onClose={() => setAsking(false)} patientId={patient.id} canView={!restricted} />
       {opening && <OpenEpisode patientId={patient.id} onClose={() => setOpening(false)} />}
+      <RemoveEpisodeDialog episode={removing} onClose={() => setRemoving(null)}
+        onRemoved={() => { setRemoving(null); api.patient(patient.id).then(setPatient).catch(() => undefined); }} />
     </div>
   );
 }
 
 /** The patient's cancer records with how far each form is filled. */
-function Episodes({ episodes, canEdit, limit, onOpen }: { episodes: EpisodeSummary[]; canEdit: boolean; limit: number; onOpen: () => void }) {
+function Episodes({ episodes, canEdit, limit, onOpen, onRemove }: {
+  episodes: EpisodeSummary[]; canEdit: boolean; limit: number; onOpen: () => void; onRemove: (e: EpisodeSummary) => void;
+}) {
   // The registry allows `limit` cancer records per patient (a System Admin setting).
   const full = episodes.length >= limit;
   return (
@@ -228,6 +235,11 @@ function Episodes({ episodes, canEdit, limit, onOpen }: { episodes: EpisodeSumma
                 <div className="mt-1.5"><Progress value={e.progress.percent} tone={e.progress.percent >= 80 ? "info" : e.progress.percent >= 40 ? "warn" : "bad"} /></div>
                 <p className="mt-1 text-[12.5px] text-soot/72">{e.progress.filled}/{e.progress.total} fields · updated {fmtDate(e.updated_at)}</p>
               </Link>
+              {e.can_remove && (
+                <button className="mt-1 text-[12.5px] font-semibold text-danger-700 hover:underline" onClick={() => onRemove(e)}>
+                  Remove
+                </button>
+              )}
             </li>
           ))}
         </ul>

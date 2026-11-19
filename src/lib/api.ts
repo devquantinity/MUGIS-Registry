@@ -152,6 +152,8 @@ export type EpisodeSummary = {
   id: string; patient_id: string; cancer_type: string; cancer_type_name: string;
   /** The live form the progress was measured against. */
   form_version: number; progress: EpisodeProgress; created_at: string; updated_at: string;
+  /** You added this patient, so you may remove the record. */
+  can_remove: boolean;
 };
 
 export type Episode = EpisodeSummary & {
@@ -402,6 +404,8 @@ export const api = {
   createEpisode: (patientId: string, cancer_type: string, data?: Answers) =>
     request<Episode>("POST", `/patients/${patientId}/episodes`, { cancer_type, data }),
   episode: (id: string) => request<Episode>("GET", `/cancer-episodes/${id}`),
+  /** Owner of the patient only. */
+  removeEpisode: (id: string) => request<{ id: string }>("DELETE", `/cancer-episodes/${id}`),
   /** `data` is merged; a null value clears that answer. */
   updateEpisode: (id: string, body: { cancer_type?: string; data?: Record<string, Answer | null> }) =>
     request<Episode>("PATCH", `/cancer-episodes/${id}`, body),

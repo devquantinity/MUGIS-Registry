@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTitle } from "@/lib/useTitle";
 import { CLINICAL, useSession } from "@/lib/session";
@@ -12,6 +12,7 @@ import {
 import { answerError, changesOf, draftFrom, fieldIndex, type Draft, type DraftValue } from "@/lib/episodeForm";
 import { fmtDateTime } from "@/lib/format";
 import { EpisodeForm } from "@/components/EpisodeForm";
+import RemoveEpisodeDialog from "@/components/RemoveEpisodeDialog";
 import { Badge, Card, Modal, PageHeader } from "@/components/ui";
 import { Select } from "@/components/Select";
 
@@ -34,6 +35,8 @@ export default function EpisodePage() {
   const [fieldError, setFieldError] = useState<{ key: string; text: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [retyping, setRetyping] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const router = useRouter();
   useTitle(patient ? `${patient.full_name ?? patient.registry_no} · ${episode?.cancer_type_name ?? "Record"}` : "Cancer record");
 
   const clinical = !!session && CLINICAL.includes(session.role);
@@ -163,6 +166,11 @@ export default function EpisodePage() {
           <div className="flex flex-wrap gap-2">
             <Link href={`/patients/${episode.patient_id}`} className="btn-secondary">Patient record</Link>
             {!readOnly && <button className="btn-secondary" onClick={() => setRetyping(true)}>Change cancer type</button>}
+            {episode.can_remove && (
+              <button className="btn border border-danger-200 bg-white/60 text-danger-700 hover:bg-danger-50" onClick={() => setRemoving(true)}>
+                Remove record
+              </button>
+            )}
           </div>
         }
       />
@@ -171,6 +179,9 @@ export default function EpisodePage() {
           <Badge>View only</Badge> <span className="ml-1">You can see this record but not change it. Ask for edit access on the patient record.</span>
         </p>
       )}
+
+      <RemoveEpisodeDialog episode={removing ? episode : null} onClose={() => setRemoving(false)}
+        onRemoved={() => router.push(`/patients/${episode.patient_id}`)} />
 
       <EpisodeForm form={form.form} draft={draft} saved={episode.data} onChange={onChange}
         readOnly={readOnly} error={fieldError} footer={footer} />
