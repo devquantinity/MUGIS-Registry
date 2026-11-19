@@ -126,3 +126,5 @@ src/lib/
 - Centre list in `src/lib/centres.ts` is placeholder data.
 - Oesophageal Adenocarcinoma, Oesophageal SCC and GIST are Phase 2.
 - Trainee logbook is Phase 2.
+
+v1.0.0
