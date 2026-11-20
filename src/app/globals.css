@@ -46,7 +46,13 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* iOS: keep our type scale when the phone is turned sideways */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
+
+input[type="radio"] { accent-color: rgb(var(--color-forest-500)); }
 
 body {
   @apply bg-cream text-soot;
@@ -122,7 +128,63 @@ select.input {
   background-size: 13px;
 }
 
-.bottom-safe { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+/* ---------------------------------------------------------------
+   Phones and tablets
+   --------------------------------------------------------------- */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* phone/tablet top header, and the bottom tab bar (0 from xl up — see below) */
+  --mobile-header-h: calc(56px + var(--safe-top));
+  --tabbar-h: calc(58px + var(--safe-bottom));
+  /* where pinned bars (the record's section bar) stick: under the header */
+  --sticky-top: var(--mobile-header-h);
+}
+/* A phone held sideways: the header scrolls away and the tab bar is icons only. */
+@media (max-height: 500px) {
+  :root {
+    --tabbar-h: calc(44px + var(--safe-bottom));
+    --sticky-top: 0px;
+  }
+}
+/* From xl the sidebar and desktop top bar take over. */
+@media (min-width: 1280px) {
+  :root { --tabbar-h: 0px; }
+}
+
+/* In the utilities layer so a responsive variant (sm:pt-0, lg:min-h-…) still wins. */
+@layer utilities {
+  /* 100vh on a phone includes the area behind the browser's own bars */
+  .min-h-app { min-height: 100vh; min-height: 100dvh; }
+  .pt-safe { padding-top: var(--safe-top); }
+  .pb-safe { padding-bottom: var(--safe-bottom); }
+  /* bottom sheet height; vh first for browsers without dvh */
+  .max-h-sheet { max-height: 90vh; max-height: 90dvh; }
+}
+
+/* viewport-fit=cover: keep content out from under the notch when the phone
+   is held sideways. Zero everywhere else. */
+body {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Fingers need 44px. Applies to every .btn / .input, including the compact
+   ones in tables, without changing the desktop layout. */
+@media (pointer: coarse) {
+  .btn, .input { min-height: 44px; }
+  input[type="radio"] { width: 20px; height: 20px; flex-shrink: 0; }
+}
+
+/* Bottom sheet (Modal on a phone) */
+@keyframes mg-sheet {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.mg-sheet { animation: mg-sheet 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (min-width: 640px) {
+  .mg-sheet { animation: none; }
+}
 
 /* ---------------------------------------------------------------
    Sign-in screen animations
@@ -242,7 +304,7 @@ select.input {
   .mg-float, .mg-drift, .mg-drift-2, .mg-grid-pan,
   .mg-bar, .mg-fade-up, .mg-spin-slow, .mg-pop, .mg-menu,
   .mg-toast-in, .mg-toast-out, .mg-draw, .mg-ring,
-  .mg-settle, .mg-lift {
+  .mg-settle, .mg-lift, .mg-sheet {
     animation: none !important;
   }
   /* the sweep is the only signal that work is happening — keep it */

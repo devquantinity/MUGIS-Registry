@@ -29,15 +29,15 @@ export default function ProfilePage() {
             {initials(session.name)}
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate font-display text-xl font-bold text-ink">{me.full_name ?? session.name}</h2>
-            <p className="truncate text-sm text-soot/80">{me.email}</p>
+            <h2 className="break-words font-display text-xl font-bold text-ink">{me.full_name ?? session.name}</h2>
+            <p className="break-all text-sm text-soot/80">{me.email}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               <Badge tone="info">{API_ROLE_LABELS[me.role]}</Badge>
               {me.two_factor_enabled && <Badge tone="ok">2FA enabled</Badge>}
               <Badge tone="muted">{me.status}</Badge>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
             <button onClick={() => setEdit(true)} className="btn-secondary">Edit details</button>
             <button onClick={() => setPw(true)} className="btn-secondary">Change password</button>
           </div>
@@ -71,7 +71,7 @@ export default function ProfilePage() {
       <div className="mt-8 border-t border-line pt-4 text-center">
         <button
           onClick={() => signOut()}
-          className="text-xs text-soot/70 underline-offset-2 transition-colors hover:text-soot hover:underline"
+          className="text-xs text-soot/70 underline-offset-2 transition-colors hover:text-soot hover:underline touch:min-h-[44px] touch:px-4 touch:text-sm"
         >
           Sign out of the registry
         </button>
@@ -121,7 +121,7 @@ function EditDetails({ open, onClose, initial, onSaved }: {
 
   return (
     <Modal open={open} onClose={onClose} title="Edit your details">
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div><label className="label">Full name</label>
           <input className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
         <div><label className="label">Display name</label>
@@ -161,7 +161,7 @@ function ChangePassword({ open, onClose, onDone }: { open: boolean; onClose: () 
 
   return (
     <Modal open={open} onClose={onClose} title="Change password">
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div><label className="label">Current password</label>
           <input type="password" className="input" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" /></div>
         <div><label className="label">New password</label>

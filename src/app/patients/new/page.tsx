@@ -87,7 +87,7 @@ export default function NewPatientPage() {
           {error && !blocked && <p className="mt-4 rounded-xl border border-danger-200 bg-danger-50 px-3 py-2.5 text-[13.5px] text-danger-700">{error}</p>}
         </Card>
 
-        <div className="grid content-start gap-4">
+        <div className="grid grid-cols-1 content-start gap-4">
           <Card>
             <SectionTitle>Centre</SectionTitle>
             {centreOptions.length > 1 ? (

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config = {
   darkMode: "class",
@@ -8,6 +9,17 @@ const config: Config = {
     "./src/lib/**/*.{ts,tsx}",
   ],
   theme: {
+    // In this order, so each one wins over the ones before it. With raw media
+    // queries here, Tailwind's min-[…] / max-* variants are off: use these.
+    screens: {
+      xs: "360px", // a regular phone; below it is a Galaxy Fold or an SE
+      ...defaultTheme.screens,
+      // `touch:` — fingers, not a mouse. Used to give controls a 44px target
+      // without growing the desktop layout.
+      touch: { raw: "(pointer: coarse)" },
+      // A phone held sideways: every pixel of height counts.
+      short: { raw: "(max-height: 500px)" },
+    },
     extend: {
       colors: {
         // MUGIS theme — values live in src/app/globals.css (CSS vars).

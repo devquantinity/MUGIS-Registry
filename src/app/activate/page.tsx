@@ -52,11 +52,11 @@ export default function ActivatePage() {
         ) : preview ? (
           <>
             <p className="mt-2 text-sm text-soot/85">Your registration has been approved.</p>
-            <dl className="mt-4 grid gap-2 rounded-xl border border-ink/[0.06] bg-white/60 p-4 text-sm dark:bg-white/[0.04]">
-              <div className="flex justify-between gap-3"><dt className="text-soot/75">Name</dt><dd className="text-right font-medium text-ink">{preview.full_name ?? "—"}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-soot/75">Email</dt><dd className="text-right font-medium text-ink">{preview.email}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-soot/75">Role</dt><dd className="text-right font-medium text-ink">{API_ROLE_LABELS[preview.role]}</dd></div>
-              {preview.centre && <div className="flex justify-between gap-3"><dt className="text-soot/75">Centre</dt><dd className="text-right font-medium text-ink">{preview.centre.name}</dd></div>}
+            <dl className="mt-4 grid grid-cols-1 gap-2 rounded-xl border border-ink/[0.06] bg-white/60 p-4 text-sm dark:bg-white/[0.04]">
+              <div className="flex justify-between gap-3"><dt className="shrink-0 text-soot/75">Name</dt><dd className="min-w-0 text-right font-medium text-ink [overflow-wrap:anywhere]">{preview.full_name ?? "—"}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="shrink-0 text-soot/75">Email</dt><dd className="min-w-0 text-right font-medium text-ink [overflow-wrap:anywhere]">{preview.email}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="shrink-0 text-soot/75">Role</dt><dd className="min-w-0 text-right font-medium text-ink [overflow-wrap:anywhere]">{API_ROLE_LABELS[preview.role]}</dd></div>
+              {preview.centre && <div className="flex justify-between gap-3"><dt className="shrink-0 text-soot/75">Centre</dt><dd className="min-w-0 text-right font-medium text-ink [overflow-wrap:anywhere]">{preview.centre.name}</dd></div>}
             </dl>
             <FormError>{error}</FormError>
             <button onClick={activate} disabled={busy} className="btn-primary mt-6 w-full !py-2.5">

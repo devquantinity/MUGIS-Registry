@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           </>
         )}
         <p className="mt-5 text-center text-sm text-soot/80">
-          <Link href="/" className="font-semibold text-forest-600 hover:underline">Back to sign in</Link>
+          <Link href="/" className="font-semibold text-forest-600 hover:underline touch:inline-block touch:py-3">Back to sign in</Link>
         </p>
       </form>
     </AuthFrame>

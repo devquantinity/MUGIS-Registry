@@ -86,24 +86,25 @@ export default function RegistrationsPage() {
 
       <Card className="mb-4">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex rounded-[10px] bg-ink/[0.05] p-0.5" role="tablist">
+          {/* full width on a phone: three equal tabs always fit */}
+          <div className="grid w-full grid-cols-3 rounded-[10px] bg-ink/[0.05] p-0.5 sm:flex sm:w-auto" role="tablist">
             {TABS.map((t) => (
               <button
                 key={t.value} role="tab" aria-selected={tab === t.value}
                 onClick={() => { setTab(t.value); setPage(1); }}
-                className={"rounded-[8px] px-3 py-1.5 text-[14px] font-medium transition-colors " +
+                className={"rounded-[8px] px-1 py-1.5 text-[14px] font-medium transition-colors sm:px-3 touch:py-2.5 " +
                   (tab === t.value ? "bg-white text-ink shadow-sm dark:bg-white/[0.12]" : "text-soot hover:text-ink")}
               >
                 {t.label}
               </button>
             ))}
           </div>
-          <div className="min-w-[200px] flex-1">
+          <div className="w-full sm:w-auto sm:min-w-[200px] sm:flex-1">
             <label className="label">Search</label>
             <input className="input" placeholder="Name or email" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           {session.role !== "hod" && (
-            <div className="min-w-[200px]">
+            <div className="w-full sm:w-auto sm:min-w-[200px]">
               <label className="label">Centre</label>
               <Select ariaLabel="Filter by centre" value={centre} onChange={(v) => { setCentre(v); setPage(1); }}
                 placeholder="All centres"
@@ -115,23 +116,64 @@ export default function RegistrationsPage() {
 
       {error && <Card className="mb-4"><p className="text-sm text-danger-700">{error}</p></Card>}
 
-      <Table head={
+      {/* Phones and tablets: a card per application, decision buttons full width. */}
+      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
+        {(data?.items ?? []).map((r) => (
+          <li key={r.id} className="card flex min-w-0 flex-col p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-base font-semibold leading-snug text-ink">{r.full_name ?? "—"}</p>
+                <p className="break-all text-[13px] text-soot">{r.email}</p>
+                {r.phone && <p className="text-[13px] text-soot">{r.phone}</p>}
+              </div>
+              {r.centre && <Badge tone="muted" className="mt-0.5 shrink-0">{r.centre.code}</Badge>}
+            </div>
+            <dl className="mt-2.5 grid grid-cols-[auto,minmax(0,1fr)] gap-x-3 gap-y-1 text-[13.5px]">
+              <dt className="text-soot/72">Role</dt>
+              <dd className="text-ink">{API_ROLE_LABELS[r.role]}</dd>
+              <dt className="text-soot/72">{r.id_type === "passport" ? "Passport" : "MyKad"}</dt>
+              <dd className="break-all font-mono text-[13px] text-ink">{r.id_number ?? "—"}</dd>
+              <dt className="text-soot/72">Submitted</dt>
+              <dd className="text-ink">{fmtDateTime(r.created_at)}</dd>
+              {r.reviewed_at && (<><dt className="text-soot/72">Reviewed</dt><dd className="text-ink">{fmtDateTime(r.reviewed_at)}</dd></>)}
+            </dl>
+            <div className="mt-auto pt-3">
+              {r.status === "pending_approval" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setRejecting(r)} className="btn-secondary">Reject</button>
+                  <button onClick={() => setApproving(r)} className="btn-primary">Approve</button>
+                </div>
+              ) : r.status === "rejected" ? (
+                <p className="break-words text-[13px] text-soot/80">{r.rejection_reason ? `Rejected: “${r.rejection_reason}”` : "Rejected"}</p>
+              ) : (
+                <Badge tone="ok">Activation link sent</Badge>
+              )}
+            </div>
+          </li>
+        ))}
+        {data && data.items.length === 0 && (
+          <li className="card p-4 text-sm text-soot/75">{tab === "pending_approval" ? "Nothing waiting for review." : "None yet."}</li>
+        )}
+        {!data && !error && <li className="card p-4 text-sm text-soot/75">Loading…</li>}
+      </ul>
+
+      <Table className="hidden lg:block" head={
         <tr><Th>Applicant</Th><Th>Role</Th><Th>Centre</Th><Th>Identity</Th><Th align="right">Submitted</Th><Th align="right"> </Th></tr>
-      } minWidth={960}>
+      } minWidth={880}>
         {(data?.items ?? []).map((r) => (
           <tr key={r.id} className="hover:bg-cream/50">
             <Td>
               <span className="block font-medium text-ink">{r.full_name ?? "—"}</span>
-              <span className="block text-xs text-soot">{r.email}{r.phone ? ` · ${r.phone}` : ""}</span>
+              <span className="block break-all text-xs text-soot">{r.email}{r.phone ? ` · ${r.phone}` : ""}</span>
             </Td>
             <Td><span className="text-sm text-ink">{API_ROLE_LABELS[r.role]}</span></Td>
             <Td>{r.centre ? <Badge tone="muted">{r.centre.code}</Badge> : "—"}</Td>
             <Td>
-              <span className="block font-mono text-[13px] text-ink">{r.id_number ?? "—"}</span>
+              <span className="block whitespace-nowrap font-mono text-[13px] text-ink">{r.id_number ?? "—"}</span>
               <span className="block text-[12px] text-soot/70">{r.id_type === "passport" ? "Passport" : "MyKad"}</span>
             </Td>
             <Td align="right">
-              <span className="block text-xs text-soot/80">{fmtDateTime(r.created_at)}</span>
+              <span className="block whitespace-nowrap text-xs text-soot/80">{fmtDateTime(r.created_at)}</span>
               {r.reviewed_at && <span className="block text-[12px] text-soot/65">reviewed {fmtDateTime(r.reviewed_at)}</span>}
             </Td>
             <Td align="right">
@@ -155,7 +197,7 @@ export default function RegistrationsPage() {
       </Table>
 
       {data && data.page.total > PAGE_SIZE && (
-        <div className="mt-3 flex items-center justify-between text-sm text-soot">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-soot">
           <span>{data.page.total} applications · page {page} of {pages}</span>
           <div className="flex gap-2">
             <button className="btn-secondary !py-1" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
@@ -200,7 +242,7 @@ function Approve({ reg, onClose, onDone }: { reg: Registration | null; onClose: 
   return (
     <Modal open={!!reg} onClose={onClose} title="Approve registration">
       {reg && (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <p className="text-sm text-soot">
             <span className="font-medium text-ink">{reg.full_name}</span> ({reg.email}) as{" "}
             {API_ROLE_LABELS[reg.role]} at {reg.centre?.name ?? "—"}. Check the identity number{" "}
@@ -251,7 +293,7 @@ function Reject({ reg, onClose, onDone }: { reg: Registration | null; onClose: (
   return (
     <Modal open={!!reg} onClose={onClose} title="Reject registration">
       {reg && (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <p className="text-sm text-soot">
             <span className="font-medium text-ink">{reg.full_name}</span> ({reg.email}) will be told by email. They may apply again.
           </p>

@@ -71,12 +71,12 @@ export default function PatientAccessPanel({ patientId }: { patientId: string })
       ) : items.length === 0 ? (
         <p className="mt-3 text-[13.5px] text-soot/80">Nobody else yet.</p>
       ) : (
-        <ul className="mt-3 grid gap-2">
+        <ul className="mt-3 grid grid-cols-1 gap-2">
           {items.map((g) => (
             <li key={g.id} className="flex items-start justify-between gap-2 rounded-xl border border-line px-3 py-2">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-ink">{g.requester.full_name || g.requester.email}</p>
-                <p className="truncate text-[12.5px] text-soot/72">
+                <p className="break-words text-sm font-semibold text-ink">{g.requester.full_name || g.requester.email}</p>
+                <p className="text-[12.5px] text-soot/72">
                   {API_ROLE_LABELS[g.requester.role]} · {g.permission === "edit" ? "View and edit" : "View"}
                   {g.status === "approved" && g.decided_at ? ` · since ${fmtDate(g.decided_at)}` : ""}
                 </p>
@@ -84,7 +84,7 @@ export default function PatientAccessPanel({ patientId }: { patientId: string })
               {g.status === "pending" ? (
                 <Badge tone="warn">Asked</Badge>
               ) : (
-                <button className="text-[13px] font-semibold text-danger-700 hover:underline disabled:opacity-50"
+                <button className="shrink-0 text-[13px] font-semibold text-danger-700 hover:underline disabled:opacity-50 touch:-my-1 touch:py-2.5"
                   onClick={() => revoke(g)} disabled={busy}>Remove</button>
               )}
             </li>
@@ -92,15 +92,15 @@ export default function PatientAccessPanel({ patientId }: { patientId: string })
         </ul>
       )}
 
-      <form onSubmit={share} className="mt-4 grid gap-2" noValidate>
+      <form onSubmit={share} className="mt-4 grid grid-cols-1 gap-2" noValidate>
         <label className="label" htmlFor="share-email">Share with a colleague</label>
         <input id="share-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
           placeholder="colleague@hospital.gov.my" maxLength={254} />
         <div className="flex flex-wrap items-center gap-3 text-[13.5px] text-ink">
-          <label className="flex items-center gap-1.5">
+          <label className="flex items-center gap-1.5 touch:min-h-[44px]">
             <input type="radio" name="share-permission" checked={permission === "view"} onChange={() => setPermission("view")} /> View
           </label>
-          <label className="flex items-center gap-1.5">
+          <label className="flex items-center gap-1.5 touch:min-h-[44px]">
             <input type="radio" name="share-permission" checked={permission === "edit"} onChange={() => setPermission("edit")} /> View and edit
           </label>
           <button type="submit" className="btn-primary ml-auto" disabled={busy || !email.trim()}>{busy ? "Sharing…" : "Share"}</button>

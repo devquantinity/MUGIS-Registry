@@ -117,6 +117,31 @@ src/lib/
   seed.ts           Deterministic dummy data
 ```
 
+## Phones and tablets
+
+Clinicians use the registry on phones and iPads, so every screen is laid out
+for a small phone first and checked at widths from 280px (Galaxy Fold) to
+1920px, in portrait and landscape:
+
+| Width | Layout |
+| --- | --- |
+| below 640px (phones) | one column, bottom tab bar, dialogs as bottom sheets |
+| 640–1023px (iPad portrait) | lists as two columns of cards, bottom tab bar |
+| 1024–1279px (iPad landscape) | tables, bottom tab bar, full-width content |
+| 1280px and up | sidebar and desktop top bar |
+
+- The shell switches at `xl` (`TabBar`, `MobileHeader` and `Sidebar` in
+  `Shell.tsx`); the cancer record's section rail switches with it
+  (`EpisodeForm.tsx`). Lists are cards below `lg`, tables from `lg`.
+- `touch:` is a Tailwind variant for `(pointer: coarse)`. `.btn` and `.input`
+  are 44px tall there, and other controls get the same size. Keep text inputs
+  at 16px or iOS zooms in when they take focus.
+- `short:` is `(max-height: 500px)`, a phone held sideways: the header scrolls
+  away and the tab bar shows icons only.
+- On a phone the tab bar slides away while the keyboard is up.
+- Safe-area insets and bar heights are CSS variables at the top of
+  `globals.css`.
+
 ## Not done yet
 
 - **Auth is a demo stub.** One click signs you in. Real auth is server-side:

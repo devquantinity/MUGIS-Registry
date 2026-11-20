@@ -108,14 +108,14 @@ function VisualPanel() {
 /* ---- the frame every signed-out screen shares ------------------------- */
 export default function AuthFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-app flex">
       <div className="relative flex w-full flex-col overflow-hidden bg-cream lg:w-1/2">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-40 left-1/2 h-96 w-[34rem] -translate-x-1/2 rounded-full bg-forest-200/30 blur-[130px]" />
           <div className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-gold-300/20 blur-[110px]" />
         </div>
 
-        <div className="relative z-10 px-6 pt-6 sm:px-10">
+        <div className="relative z-10 px-5 pt-6 sm:px-10">
           <Link href="/">
             <Image
               src="/mugis-logo.png"
@@ -128,11 +128,11 @@ export default function AuthFrame({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-8 sm:px-10">
+        <div className="relative z-10 flex flex-1 items-center justify-center px-5 py-8 sm:px-10">
           <div className="mg-fade-up w-full max-w-md">{children}</div>
         </div>
 
-        <p className="relative z-10 px-6 pb-6 text-center text-[13px] text-soot/65 sm:px-10">
+        <p className="relative z-10 px-5 pb-6 text-center text-[13px] text-soot/65 sm:px-10">
           © 2026 Malaysian Upper Gastrointestinal Surgical Society
         </p>
       </div>

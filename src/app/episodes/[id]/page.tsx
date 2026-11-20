@@ -36,6 +36,7 @@ export default function EpisodePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [retyping, setRetyping] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [more, setMore] = useState(false); // phone: the other header actions
   const router = useRouter();
   useTitle(patient ? `${patient.full_name ?? patient.registry_no} · ${episode?.cancer_type_name ?? "Record"}` : "Cancer record");
 
@@ -139,10 +140,12 @@ export default function EpisodePage() {
     }
   }
 
+  // Pinned above the phone tab bar (--tabbar-h is 0 on desktop). On a phone it
+  // only takes the space when there is something to save or to say.
   const footer = !readOnly && (
-    <div className="sticky bottom-3 z-10">
-      <Card className="!py-3">
-        <div className="flex flex-wrap items-center gap-3">
+    <div className={"sticky bottom-[calc(var(--tabbar-h)+0.75rem)] z-10 " + (dirty || saveError || notice ? "" : "hidden xl:block")}>
+      <Card className="!py-3 shadow-raised xl:shadow-[0_0_0_1px_rgba(10,30,20,0.04)]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="text-[13px] text-soot/80">
             {dirty ? `${Object.keys(changes).length} unsaved change${Object.keys(changes).length === 1 ? "" : "s"}` : "All changes saved"}
           </span>
@@ -150,7 +153,7 @@ export default function EpisodePage() {
           {!saveError && notice && <span className="text-[13px] font-medium text-sage-700">{notice}</span>}
           <div className="ml-auto flex gap-2">
             <button className="btn-ghost" disabled={!dirty || saving} onClick={() => { setDraft(draftFrom(episode.data)); setFieldError(null); setSaveError(null); }}>Discard</button>
-            <button className="btn-primary" disabled={!dirty || saving} onClick={save}>{saving ? "Saving…" : "Save"}</button>
+            <button className="btn-primary min-w-[5.5rem]" disabled={!dirty || saving} onClick={save}>{saving ? "Saving…" : "Save"}</button>
           </div>
         </div>
       </Card>
@@ -165,15 +168,31 @@ export default function EpisodePage() {
         actions={
           <div className="flex flex-wrap gap-2">
             <Link href={`/patients/${episode.patient_id}`} className="btn-secondary">Patient record</Link>
-            {!readOnly && <button className="btn-secondary" onClick={() => setRetyping(true)}>Change cancer type</button>}
+            {!readOnly && <button className="btn-secondary hidden sm:inline-flex" onClick={() => setRetyping(true)}>Change cancer type</button>}
             {episode.can_remove && (
-              <button className="btn border border-danger-200 bg-white/60 text-danger-700 hover:bg-danger-50" onClick={() => setRemoving(true)}>
+              <button className="btn hidden border border-danger-200 bg-white/60 text-danger-700 hover:bg-danger-50 sm:inline-flex" onClick={() => setRemoving(true)}>
                 Remove record
               </button>
+            )}
+            {/* phone: the rarely used actions sit behind one button */}
+            {(!readOnly || episode.can_remove) && (
+              <button className="btn-secondary sm:hidden" onClick={() => setMore(true)} aria-haspopup="dialog">More</button>
             )}
           </div>
         }
       />
+      <Modal open={more} onClose={() => setMore(false)} title="Record actions">
+        <div className="grid grid-cols-1 gap-2">
+          {!readOnly && (
+            <button className="btn-secondary w-full" onClick={() => { setMore(false); setRetyping(true); }}>Change cancer type</button>
+          )}
+          {episode.can_remove && (
+            <button className="btn w-full border border-danger-200 bg-white/60 text-danger-700 hover:bg-danger-50" onClick={() => { setMore(false); setRemoving(true); }}>
+              Remove record
+            </button>
+          )}
+        </div>
+      </Modal>
       {readOnly && (
         <p className="mb-4 rounded-xl border border-line bg-cream/70 px-3 py-2.5 text-[13.5px] text-soot">
           <Badge>View only</Badge> <span className="ml-1">You can see this record but not change it. Ask for edit access on the patient record.</span>

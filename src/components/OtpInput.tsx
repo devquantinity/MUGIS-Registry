@@ -63,14 +63,14 @@ export default function OtpInput({ code, onCode, disabled, onComplete }: {
       inputMode="numeric"
       autoComplete={i === 0 ? "one-time-code" : "off"}
       aria-label={`Digit ${i + 1}`}
-      className="h-12 w-11 rounded-[10px] border border-ink/10 bg-white/80 text-center text-lg font-semibold tabular-nums text-ink transition-colors focus:border-forest-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-500/15 disabled:opacity-50 dark:bg-white/[0.06] dark:focus:bg-white/[0.09]"
+      className="h-12 min-w-0 max-w-12 flex-1 rounded-[10px] border border-ink/10 bg-white/80 text-center text-lg font-semibold tabular-nums text-ink transition-colors focus:border-forest-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest-500/15 disabled:opacity-50 dark:bg-white/[0.06] dark:focus:bg-white/[0.09]"
     />
   );
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full max-w-[22rem] items-center gap-1.5 sm:gap-2">
       {[0, 1, 2].map(box)}
-      <span aria-hidden className="w-2 text-center text-soot/60">–</span>
+      <span aria-hidden className="w-2 shrink-0 text-center text-soot/60">–</span>
       {[3, 4, 5].map(box)}
     </div>
   );

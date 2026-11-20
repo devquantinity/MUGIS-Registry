@@ -52,10 +52,10 @@ export default function AcceptInvitationPage() {
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Accept your invitation</h1>
         {preview ? (
           <>
-            <p className="mt-1 text-sm text-soot/80">
+            <p className="mt-1 text-sm text-soot/80 [overflow-wrap:anywhere]">
               {preview.email} · {API_ROLE_LABELS[preview.role]}{preview.centre ? ` · ${preview.centre.name}` : ""}
             </p>
-            <div className="mt-5 grid gap-3.5">
+            <div className="mt-5 grid grid-cols-1 gap-3.5">
               <div>
                 <label htmlFor="full_name" className="label">Full name</label>
                 <input id="full_name" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />

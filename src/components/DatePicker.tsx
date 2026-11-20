@@ -14,8 +14,13 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from "react-dom";
 
 const useMeasure = typeof window === "undefined" ? useEffect : useLayoutEffect;
-const PANEL_W = 278;
-const PANEL_H = 372; // header, six weeks, footer
+// Desktop, and touch (40px days and buttons). The panel never gets wider than
+// the screen allows; on a phone held sideways it scrolls inside itself.
+const PANEL_W = 300;
+const PANEL_H = 392; // header, six weeks, footer
+const PANEL_W_TOUCH = 316;
+const PANEL_H_TOUCH = 424;
+const FIRST_YEAR = 1900;
 const GAP = 6;
 const EDGE = 12;
 
@@ -65,21 +70,31 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<{ y: number; m: number }>(() =>
     sel ? { y: sel.y, m: sel.m } : { y: now.getFullYear(), m: now.getMonth() });
+  // "days" is the calendar; the title opens "years", then "months" — so a
+  // date of birth decades back is three taps, not hundreds of month steps.
+  const [mode, setMode] = useState<"days" | "years" | "months">("days");
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [box, setBox] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const yearRef = useRef<HTMLButtonElement | null>(null);
+  const [box, setBox] = useState<{ left: number; width: number; top?: number; bottom?: number; maxHeight?: number } | null>(null);
 
-  /** Below the trigger, or above it when there is more room there. */
+  /** Below the trigger, else above it; if neither fits, centred and scrolling. */
   const place = useCallback(() => {
     const b = btnRef.current?.getBoundingClientRect();
     if (!b) return;
     const vw = window.innerWidth, vh = window.innerHeight;
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const width = Math.min(coarse ? PANEL_W_TOUCH : PANEL_W, vw - EDGE * 2);
+    const height = coarse ? PANEL_H_TOUCH : PANEL_H;
     const below = vh - b.bottom - GAP - EDGE;
     const above = b.top - GAP - EDGE;
-    const left = Math.max(EDGE, Math.min(b.left, vw - EDGE - PANEL_W));
-    setBox(below < PANEL_H && above > below
-      ? { left, bottom: vh - b.top + GAP }
-      : { left, top: b.bottom + GAP });
+    const left = Math.max(EDGE, Math.min(b.left, vw - EDGE - width));
+    if (below >= height) setBox({ left, width, top: b.bottom + GAP });
+    else if (above >= height) setBox({ left, width, bottom: vh - b.top + GAP });
+    else {
+      const room = vh - EDGE * 2;
+      setBox({ left, width, top: Math.max(EDGE, (vh - Math.min(height, room)) / 2), maxHeight: room });
+    }
   }, []);
 
   useMeasure(() => { if (open) place(); }, [open, place]);
@@ -99,8 +114,14 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
     if (!open) return;
     const p = parseIso(value);
     if (p) setView({ y: p.y, m: p.m });
+    setMode("days");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Bring the year in view to the middle of the year list.
+  useEffect(() => {
+    if (open && mode === "years") yearRef.current?.scrollIntoView({ block: "center" });
+  }, [open, mode]);
 
   useEffect(() => {
     if (!open) return;
@@ -130,6 +151,13 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
 
   const isDisabledDay = (iso: string) => (max ? iso > max : false);
 
+  const maxP = parseIso(max);
+  const lastYear = maxP ? maxP.y : now.getFullYear() + 10;
+  const years = useMemo(
+    () => Array.from({ length: lastYear - FIRST_YEAR + 1 }, (_, i) => lastYear - i),
+    [lastYear]);
+  const monthOff = (m: number) => !!maxP && (view.y > maxP.y || (view.y === maxP.y && m > maxP.m));
+
   function pick(iso: string) {
     onChange(iso);
     setOpen(false);
@@ -154,7 +182,7 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
             role="button"
             aria-label="Clear date"
             onClick={(e) => { e.stopPropagation(); onChange(""); }}
-            className="rounded-full p-0.5 text-soot/60 hover:bg-cream hover:text-soot"
+            className="rounded-full p-0.5 text-soot/60 hover:bg-cream hover:text-soot touch:-mr-2.5 touch:p-3.5"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -164,21 +192,57 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
 
       {open && !disabled && box && createPortal(
         <div ref={panelRef} role="dialog" aria-label="Choose a date"
-          style={{ position: "fixed", left: box.left, top: box.top, bottom: box.bottom, width: PANEL_W }}
-          className="z-[75] rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-3 shadow-raised">
+          style={{ position: "fixed", left: box.left, top: box.top, bottom: box.bottom, width: box.width, maxHeight: box.maxHeight }}
+          className="z-[75] overflow-y-auto overscroll-contain rounded-xl border border-ink/10 bg-white dark:border-white/[0.08] dark:bg-paper p-3 shadow-raised">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" onClick={() => setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))}
-              className="rounded-lg p-1.5 text-soot/75 hover:bg-cream hover:text-ink" aria-label="Previous month">
+              className={"flex h-9 w-9 items-center justify-center rounded-lg text-soot/75 hover:bg-cream hover:text-ink touch:h-11 touch:w-10 " + (mode === "days" ? "" : "invisible")} aria-label="Previous month">
               <Chevron left />
             </button>
-            <span className="text-[15px] font-semibold text-ink">{MONTHS[view.m]} {view.y}</span>
+            <button type="button" onClick={() => setMode(mode === "days" ? "years" : "days")}
+              aria-label={mode === "days" ? "Choose year and month" : "Back to the calendar"}
+              className="flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[15px] font-semibold text-ink hover:bg-cream touch:h-11">
+              {mode === "months" ? view.y : `${MONTHS[view.m]} ${view.y}`}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+                strokeLinecap="round" strokeLinejoin="round" className={"text-soot/60 transition-transform " + (mode === "days" ? "" : "rotate-180")}>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
             <button type="button" onClick={() => setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))}
-              className="rounded-lg p-1.5 text-soot/75 hover:bg-cream hover:text-ink" aria-label="Next month">
+              className={"flex h-9 w-9 items-center justify-center rounded-lg text-soot/75 hover:bg-cream hover:text-ink touch:h-11 touch:w-10 " + (mode === "days" ? "" : "invisible")} aria-label="Next month">
               <Chevron />
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-y-0.5">
+          {mode === "years" && (
+            <div className="grid h-[264px] grid-cols-4 content-start gap-1 overflow-y-auto overscroll-contain pr-0.5 touch:h-[284px]" role="listbox" aria-label="Year">
+              {years.map((y) => (
+                <button key={y} type="button" ref={y === view.y ? yearRef : undefined}
+                  role="option" aria-selected={y === view.y}
+                  onClick={() => { setView((v) => ({ y, m: v.m })); setMode("months"); }}
+                  className={"flex h-10 items-center justify-center rounded-lg text-[14.5px] tabular-nums transition-colors " +
+                    (y === view.y ? "bg-forest-500 font-semibold text-white" : "text-ink hover:bg-ink/[0.05]")}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === "months" && (
+            <div className="grid h-[264px] grid-cols-3 content-center gap-1.5 touch:h-[284px]" role="listbox" aria-label="Month">
+              {MONTHS.map((name, m) => (
+                <button key={name} type="button" disabled={monthOff(m)}
+                  role="option" aria-selected={m === view.m}
+                  onClick={() => { setView((v) => ({ y: v.y, m })); setMode("days"); }}
+                  className={"flex h-12 items-center justify-center rounded-lg text-[14.5px] transition-colors disabled:cursor-not-allowed disabled:text-soot/40 " +
+                    (m === view.m ? "bg-forest-500 font-semibold text-white" : "text-ink hover:bg-ink/[0.05]")}>
+                  {name.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === "days" && <div className="grid h-[264px] grid-cols-7 content-start gap-y-0.5 touch:h-[284px]">
             {DOW.map((d) => (
               <span key={d} className="flex h-7 items-center justify-center text-[12.5px] font-medium text-soot/65">{d}</span>
             ))}
@@ -195,7 +259,7 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
                   disabled={off}
                   onClick={() => pick(iso)}
                   className={
-                    "mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-[14.5px] tabular-nums transition-colors " +
+                    "mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-[14.5px] tabular-nums transition-colors touch:h-10 touch:w-full touch:max-w-10 " +
                     (isSel
                       ? "bg-forest-500 font-semibold text-white"
                       : off
@@ -209,17 +273,17 @@ export function DatePicker({ value, onChange, max, disabled, placeholder = "Pick
                 </button>
               );
             })}
-          </div>
+          </div>}
 
           <div className="mt-2 flex items-center justify-between border-t border-line pt-2">
             <button type="button" onClick={() => { onChange(""); setOpen(false); }}
-              className="rounded-lg px-2 py-1 text-xs text-soot/75 hover:bg-cream hover:text-ink">
+              className="rounded-lg px-2.5 py-1.5 text-xs text-soot/75 hover:bg-cream hover:text-ink touch:py-2.5">
               Clear
             </button>
             <button type="button"
               disabled={isDisabledDay(todayIso)}
               onClick={() => pick(todayIso)}
-              className="rounded-lg px-2 py-1 text-xs font-semibold text-forest-500 hover:bg-forest-50 disabled:opacity-40">
+              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-forest-500 hover:bg-forest-50 disabled:opacity-40 touch:py-2.5">
               Today
             </button>
           </div>

@@ -75,9 +75,10 @@ export default function AdminUsersPage() {
         actions={<button onClick={() => setInviting(true)} className="btn-primary">Invite user</button>}
       />
 
+      {/* Phone: search across, then the three filters two to a row. */}
       <Card className="mb-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 gap-3 xs:grid-cols-2 md:grid-cols-4">
+          <div className="xs:col-span-2 md:col-span-1">
             <label className="label">Search</label>
             <input className="input" placeholder="Name or email" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
@@ -93,7 +94,7 @@ export default function AdminUsersPage() {
               placeholder="Any status"
               options={[{ value: "", label: "Any status" }, ...(Object.keys(STATUS_LABEL) as UserStatus[]).map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} />
           </div>
-          <div>
+          <div className="xs:col-span-2 md:col-span-1">
             <label className="label">Centre</label>
             <Select ariaLabel="Filter by centre" value={centre} onChange={(v) => { setCentre(v); setPage(1); }}
               placeholder="All centres"
@@ -104,19 +105,52 @@ export default function AdminUsersPage() {
 
       {error && <Card className="mb-4"><p className="text-sm text-danger-700">{error}</p></Card>}
 
-      <Table head={
-        <tr><Th>Name</Th><Th>Role</Th><Th>Centre</Th><Th align="center">2FA</Th><Th align="center">Status</Th><Th align="right">Last active</Th><Th align="right"> </Th></tr>
-      } minWidth={980}>
+      {/* Phones and tablets: a card per person. */}
+      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
+        {(data?.items ?? []).map((u) => (
+          <li key={u.id} className="card flex min-w-0 flex-col p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-base font-semibold leading-snug text-ink">{u.full_name ?? u.email}</p>
+                <p className="break-all text-[13px] text-soot">{u.email}</p>
+              </div>
+              <Badge tone={STATUS_TONE[u.status]} className="mt-0.5 shrink-0">{STATUS_LABEL[u.status]}</Badge>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[13.5px] text-ink">
+              <span className="mr-0.5">{API_ROLE_LABELS[u.role]}</span>
+              {u.primary_centre && <Badge tone="muted">{u.primary_centre.code}</Badge>}
+              <Badge tone={u.two_factor_enabled ? "ok" : "bad"}>2FA {u.two_factor_enabled ? "on" : "not set up"}</Badge>
+            </div>
+            <div className="mt-auto pt-3">
+              <div className="flex items-center justify-between gap-2 border-t border-ink/[0.06] pt-2.5">
+                <span className="min-w-0 text-[13px] text-soot/80">{u.last_active_at ? `Active ${fmtDateTime(u.last_active_at)}` : "Not active yet"}</span>
+                <button onClick={() => setManaging(u)} className="btn-secondary shrink-0">Manage</button>
+              </div>
+            </div>
+          </li>
+        ))}
+        {data && data.items.length === 0 && <li className="card p-4 text-sm text-soot/75">No users match.</li>}
+        {!data && !error && <li className="card p-4 text-sm text-soot/75">Loading…</li>}
+      </ul>
+
+      {/* 2FA sits under the status so the table fits a 1280px screen beside the sidebar. */}
+      <Table className="hidden lg:block" head={
+        <tr><Th>Name</Th><Th>Role</Th><Th>Centre</Th><Th>Status</Th><Th align="right">Last active</Th><Th align="right"> </Th></tr>
+      } minWidth={880}>
         {(data?.items ?? []).map((u) => (
           <tr key={u.id} className="hover:bg-cream/50">
             <Td>
               <span className="block font-medium text-ink">{u.full_name ?? u.email}</span>
-              <span className="block text-xs text-soot">{u.email}</span>
+              <span className="block break-all text-xs text-soot">{u.email}</span>
             </Td>
             <Td><span className="text-sm text-ink">{API_ROLE_LABELS[u.role]}</span></Td>
             <Td>{u.primary_centre ? <Badge tone="muted">{u.primary_centre.code}</Badge> : <span className="text-xs text-soot/60">—</span>}</Td>
-            <Td align="center"><Badge tone={u.two_factor_enabled ? "ok" : "bad"}>{u.two_factor_enabled ? "On" : "Not set up"}</Badge></Td>
-            <Td align="center"><Badge tone={STATUS_TONE[u.status]}>{STATUS_LABEL[u.status]}</Badge></Td>
+            <Td>
+              <span className="flex flex-col items-start gap-1">
+                <Badge tone={STATUS_TONE[u.status]}>{STATUS_LABEL[u.status]}</Badge>
+                <Badge tone={u.two_factor_enabled ? "ok" : "bad"}>2FA {u.two_factor_enabled ? "on" : "not set up"}</Badge>
+              </span>
+            </Td>
             <Td align="right"><span className="text-xs text-soot/80">{u.last_active_at ? fmtDateTime(u.last_active_at) : "—"}</span></Td>
             <Td align="right">
               <button onClick={() => setManaging(u)} className="btn-secondary !px-2.5 !py-1 text-[13px]">Manage</button>
@@ -128,7 +162,7 @@ export default function AdminUsersPage() {
       </Table>
 
       {data && data.page.total > PAGE_SIZE && (
-        <div className="mt-3 flex items-center justify-between text-sm text-soot">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-soot">
           <span>{data.page.total} users · page {page} of {pages}</span>
           <div className="flex gap-2">
             <button className="btn-secondary !py-1" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
@@ -251,7 +285,7 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
       {!u ? (
         <p className="text-sm text-soot/75">{error ?? "Loading…"}</p>
       ) : (
-        <div className="grid gap-5">
+        <div className="grid grid-cols-1 gap-5">
           <div className="flex flex-wrap items-center gap-2 text-sm text-soot">
             <span>{u.email}</span>
             <Badge tone={STATUS_TONE[u.status]}>{STATUS_LABEL[u.status]}</Badge>
@@ -265,7 +299,7 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
               role and centres cannot be changed through the app.
             </p>
           ) : (
-            <section className="grid gap-3">
+            <section className="grid grid-cols-1 gap-3">
               <h4 className="text-[13px] font-semibold uppercase tracking-wide text-soot/70">Role and centres</h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
@@ -310,7 +344,7 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
                     return (
                       <button
                         key={c.id} type="button" onClick={() => toggleCentre(c.id)}
-                        className={"rounded-full border px-3 py-1 text-[13px] font-medium transition-colors " +
+                        className={"rounded-full border px-3 py-1 text-[13px] font-medium transition-colors touch:px-4 touch:py-2.5 " +
                           (on ? "border-forest-500 bg-forest-50 text-forest-700" : "border-ink/10 text-soot hover:bg-ink/[0.04]")}
                       >
                         {c.code}{on && primary === c.id ? " · primary" : ""}
@@ -338,7 +372,7 @@ function ManageUser({ userId, selfId, centres, onClose, onChanged }: {
             </section>
           )}
 
-          <section className="grid gap-2 border-t border-line pt-4">
+          <section className="grid grid-cols-1 gap-2 border-t border-line pt-4">
             <h4 className="text-[13px] font-semibold uppercase tracking-wide text-soot/70">Account</h4>
             <div className="flex flex-wrap gap-2">
               {u.status === "active" && !isSelf && (
@@ -399,7 +433,7 @@ function InviteUser({ open, centres, onClose, onInvited }: {
 
   return (
     <Modal open={open} onClose={onClose} title="Invite a user">
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div><label className="label">Full name</label>
           <input className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Dr Nur Aisyah" /></div>
         <div><label className="label">Email</label>

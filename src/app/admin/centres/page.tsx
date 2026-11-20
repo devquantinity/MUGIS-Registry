@@ -59,7 +59,7 @@ export default function AdminCentresPage() {
         actions={<button onClick={() => setEditing("new")} className="btn-primary">Add centre</button>}
       />
 
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-3">
         <Stat label="Centres" value={counts.total} tone="info" />
         <Stat label="Active" value={counts.active} tone="ok" />
         <Stat label="Inactive" value={counts.total - counts.active} tone="muted" />
@@ -67,7 +67,33 @@ export default function AdminCentresPage() {
 
       {loadError && <Card className="mb-4"><p className="text-sm text-danger-700">{loadError}</p></Card>}
 
-      <Table head={
+      {/* Phones and tablets: a card per centre. */}
+      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
+        {(centres ?? []).map((c) => (
+          <li key={c.id} className="card flex min-w-0 flex-col p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-base font-semibold leading-snug text-ink">{c.name}</p>
+                <p className="mt-0.5 text-[13.5px] text-soot"><span className="font-semibold text-ink">{c.code}</span>{c.state ? ` · ${c.state}` : ""}</p>
+              </div>
+              <Badge tone={c.is_active ? "ok" : "muted"} className="mt-0.5 shrink-0">{c.is_active ? "Active" : "Inactive"}</Badge>
+            </div>
+            <p className="mt-1 text-[12.5px] text-soot/72">Updated {fmtDateTime(c.updated_at)}</p>
+            <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
+              <button onClick={() => setEditing(c)} className="btn-secondary">Edit</button>
+              {c.is_active
+                ? <button onClick={() => setConfirm(c)} className="btn-secondary">Deactivate</button>
+                : <button onClick={() => setActive(c, true)} className="btn-secondary">Reactivate</button>}
+            </div>
+          </li>
+        ))}
+        {centres && centres.length === 0 && (
+          <li className="card p-4 text-sm text-soot/75">No centres yet — add the first one. Nobody can register until a centre exists.</li>
+        )}
+        {!centres && !loadError && <li className="card p-4 text-sm text-soot/75">Loading…</li>}
+      </ul>
+
+      <Table className="hidden lg:block" head={
         <tr><Th>Centre</Th><Th>Code</Th><Th>State</Th><Th align="center">Status</Th><Th align="right">Updated</Th><Th align="right"> </Th></tr>
       } minWidth={820}>
         {(centres ?? []).map((c) => (
@@ -154,7 +180,7 @@ function CentreForm({ target, onClose, onSaved }: {
 
   return (
     <Modal open={target !== null} onClose={onClose} title={isNew ? "Add a centre" : "Edit centre"}>
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr]">
           <div><label className="label">Code</label>
             <input className="input uppercase" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="HKL" maxLength={20} /></div>

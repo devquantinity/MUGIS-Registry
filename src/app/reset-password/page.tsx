@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
           </>
         ) : valid ? (
           <>
-            <div className="mt-5 grid gap-3.5">
+            <div className="mt-5 grid grid-cols-1 gap-3.5">
               <div>
                 <label htmlFor="password" className="label">New password</label>
                 <input id="password" type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" autoFocus />

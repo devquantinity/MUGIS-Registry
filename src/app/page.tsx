@@ -77,7 +77,8 @@ export default function DashboardPage() {
         subtitle={`${ROLE_LABELS[session.role]} · ${session.centreName}`}
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* two across on a phone; on a tablet or desktop as many as fit, so three tiles are one row */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]">
         {clinical && <>
           <Link href="/patients"><Stat label="Patients you can see" value={n(counts.patients)} icon={ICONS.patients} tone="info" /></Link>
           <Link href="/patients/access-requests"><Stat label="Access requests for you" value={n(counts.incoming)} icon={ICONS.inbox} tone={counts.incoming ? "warn" : "muted"} sub="pending your decision" /></Link>
@@ -95,17 +96,20 @@ export default function DashboardPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {clinical && (
           <Card className="lg:col-span-2">
-            <SectionTitle right={<Link href="/patients" className="text-[13px] font-semibold text-forest-600">All patients</Link>}>Recently updated</SectionTitle>
+            <SectionTitle right={<Link href="/patients" className="text-[13px] font-semibold text-forest-600 touch:-my-3 touch:py-3">All patients</Link>}>Recently updated</SectionTitle>
             {recent === null ? <p className="text-sm text-soot/72">Loading…</p> : recent.length === 0 ? (
               <p className="text-sm text-soot/80">No patients yet. <Link href="/patients/new" className="font-semibold text-forest-600 underline underline-offset-2">Register one</Link>.</p>
             ) : (
               <ul className="divide-y divide-ink/[0.05]">
                 {recent.map((p) => (
                   <li key={p.id}>
-                    <Link href={`/patients/${p.id}`} className="flex items-center gap-3 py-2 hover:text-forest-600">
-                      <span className="font-mono text-[13px] text-soot">{p.registry_no}</span>
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}</span>
-                      <Badge tone={ACCESS_LABEL[p.access].tone}>{ACCESS_LABEL[p.access].text}</Badge>
+                    {/* phone: name over registry no. — side by side the name is cut to a few letters */}
+                    <Link href={`/patients/${p.id}`} className="flex items-center gap-3 py-2.5 hover:text-forest-600 sm:py-2">
+                      <span className="flex min-w-0 flex-1 flex-col-reverse sm:flex-row sm:items-center sm:gap-3">
+                        <span className="font-mono text-[13px] text-soot">{p.registry_no}</span>
+                        <span className="min-w-0 break-words text-sm font-medium text-ink line-clamp-2 sm:flex-1 sm:line-clamp-1">{p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}</span>
+                      </span>
+                      <Badge tone={ACCESS_LABEL[p.access].tone} className="shrink-0">{ACCESS_LABEL[p.access].text}</Badge>
                       <span className="hidden text-[13px] text-soot/72 sm:inline">{fmtDate(p.updated_at)}</span>
                     </Link>
                   </li>

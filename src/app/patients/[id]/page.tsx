@@ -179,18 +179,23 @@ export default function PatientPage() {
           )}
         </Card>
 
-        <div className="grid content-start gap-4">
+        {/* On a phone this column dissolves into the page grid (`contents`) so
+            the cancer records — what a clinician opens the patient for — can
+            come first, above demography. From `lg` it is the side column again. */}
+        <div className="contents lg:grid lg:grid-cols-1 lg:content-start lg:gap-4">
           <Card>
             <SectionTitle>Record</SectionTitle>
-            <dl className="grid gap-3">
+            <dl className="grid grid-cols-1 gap-3">
               <Item label="Registry number" value={patient.registry_no} mono />
               <Item label="Centre" value={`${patient.centre.name} (${patient.centre.code})`} />
               <Item label="Registered" value={fmtDateTime(patient.created_at)} />
               <Item label="Last updated" value={fmtDateTime(patient.updated_at)} />
             </dl>
           </Card>
-          <Episodes episodes={patient.episodes} canEdit={patient.can_edit} limit={patient.cancer_record_limit}
-            onOpen={() => setOpening(true)} onRemove={setRemoving} />
+          <div className="order-first lg:order-none">
+            <Episodes episodes={patient.episodes} canEdit={patient.can_edit} limit={patient.cancer_record_limit}
+              onOpen={() => setOpening(true)} onRemove={setRemoving} />
+          </div>
           <PatientAccessPanel patientId={patient.id} />
         </div>
       </div>
@@ -212,7 +217,7 @@ function Episodes({ episodes, canEdit, limit, onOpen, onRemove }: {
   return (
     <Card>
       <SectionTitle right={canEdit && episodes.length > 0
-        ? <button className="text-[13px] font-semibold text-forest-600 hover:underline disabled:cursor-not-allowed disabled:text-soot/45 disabled:no-underline"
+        ? <button className="text-[13px] font-semibold text-forest-600 hover:underline disabled:cursor-not-allowed disabled:text-soot/45 disabled:no-underline touch:-my-3 touch:py-3"
             onClick={onOpen} disabled={full}
             title={full ? `A patient can have ${limit === 1 ? "one cancer record" : `up to ${limit} cancer records`}` : undefined}>+ New record</button>
         : undefined}>Cancer records</SectionTitle>
@@ -224,7 +229,7 @@ function Episodes({ episodes, canEdit, limit, onOpen, onRemove }: {
           {canEdit && <button className="btn-primary mt-3" onClick={onOpen}>Open cancer record</button>}
         </div>
       ) : (
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2">
           {episodes.map((e) => (
             <li key={e.id}>
               <Link href={`/episodes/${e.id}`} className="block rounded-xl border border-line px-3 py-2.5 transition-colors hover:border-forest-500/50 hover:bg-cream/60">
@@ -236,13 +241,19 @@ function Episodes({ episodes, canEdit, limit, onOpen, onRemove }: {
                 <p className="mt-1 text-[12.5px] text-soot/72">{e.progress.filled}/{e.progress.total} fields · updated {fmtDate(e.updated_at)}</p>
               </Link>
               {e.can_remove && (
-                <button className="mt-1 text-[12.5px] font-semibold text-danger-700 hover:underline" onClick={() => onRemove(e)}>
+                <button className="mt-1 text-[12.5px] font-semibold text-danger-700 hover:underline touch:mt-0 touch:py-3.5 touch:text-[13.5px]" onClick={() => onRemove(e)}>
                   Remove
                 </button>
               )}
             </li>
           ))}
         </ul>
+      )}
+      {/* A tooltip cannot be hovered on a phone — say why the button is off. */}
+      {canEdit && full && episodes.length > 0 && (
+        <p className="mt-2 text-[12.5px] text-soot/72">
+          A patient can have {limit === 1 ? "one cancer record" : `up to ${limit} cancer records`}.
+        </p>
       )}
     </Card>
   );
@@ -335,12 +346,12 @@ function RequestAccess({ open, onClose, patientId, canView }: { open: boolean; o
         <>
           <p className="text-sm text-soot">The clinician who registered this patient decides. If they have left, a Head of Department of the centre does.</p>
           {!canView && (
-            <div className="mt-4 grid gap-2 text-[13.5px] text-ink">
-              <label className="flex items-center gap-2">
+            <div className="mt-4 grid grid-cols-1 gap-2 text-[13.5px] text-ink">
+              <label className="flex items-center gap-2.5 touch:min-h-[44px]">
                 <input type="radio" name="req-permission" checked={permission === "view"} onChange={() => setPermission("view")} />
                 View — see the name and identity number
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2.5 touch:min-h-[44px]">
                 <input type="radio" name="req-permission" checked={permission === "edit"} onChange={() => setPermission("edit")} />
                 View and edit — also update the patient and continue the cancer records
               </label>

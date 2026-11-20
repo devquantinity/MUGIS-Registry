@@ -113,7 +113,7 @@ export default function CancerFormsPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="w-80">
+        <div className="w-full sm:w-80">
           <Select ariaLabel="Cancer type" value={code} placeholder={types ? "— choose —" : "Loading…"}
             onChange={(c) => { if (!dirty || window.confirm("Discard unsaved changes to this form?")) setCode(c); }}
             options={(types ?? []).map((t) => ({ value: t.code, label: t.name, hint: `v${t.form_version}` }))} />
@@ -148,7 +148,7 @@ export default function CancerFormsPage() {
           ))}
           <button className="btn-secondary" onClick={() => setAdding("section")}>+ Add section</button>
 
-          <div className="sticky bottom-3 z-10">
+          <div className="sticky bottom-[calc(var(--tabbar-h)+0.75rem)] z-10">
             <Card className="!py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-[13px] text-soot/80">{dirty ? "Unsaved changes" : "No changes"}</span>
@@ -185,14 +185,14 @@ function SectionEditor({ section, isNew, savedFields, savedOptions, onChange, on
   return (
     <Card padded={false} className={section.retired ? "opacity-75" : ""}>
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <button className="flex min-w-0 flex-1 items-center gap-2 text-left touch:min-h-[44px]" onClick={() => setOpen(!open)} aria-expanded={open}>
           <span className={"text-soot/70 transition-transform " + (open ? "rotate-90" : "")}>▸</span>
-          <span className="truncate font-display text-base font-bold text-ink">{section.label}</span>
-          <span className="text-[12.5px] text-soot/72">{live} field{live === 1 ? "" : "s"}{section.retired ? " · retired" : ""}</span>
+          <span className="min-w-0 break-words font-display text-base font-bold text-ink">{section.label}</span>
+          <span className="shrink-0 text-[12.5px] text-soot/72">{live} field{live === 1 ? "" : "s"}{section.retired ? " · retired" : ""}</span>
           {isNew && <Badge tone="info">New</Badge>}
         </button>
         {isNew
-          ? <button className="text-[13px] font-semibold text-danger-700 hover:underline" onClick={onRemove}>Remove</button>
+          ? <button className="text-[13px] font-semibold text-danger-700 hover:underline touch:px-1 touch:py-3" onClick={onRemove}>Remove</button>
           : <Check checked={!section.retired} onChange={(on) => onChange((s) => { s.retired = on ? undefined : true; })} label={<span className="text-[13px]">In use</span>} />}
       </div>
       {open && (
@@ -229,7 +229,7 @@ function FieldEditor({ field, isNew, savedOptions, onChange, onRemove }: {
   return (
     <div className={"py-3 " + (field.retired ? "opacity-70" : "")}>
       <div className="flex flex-wrap items-center gap-3">
-        <input className="input max-w-sm flex-1" aria-label="Field label" value={field.label}
+        <input className="input basis-full sm:max-w-sm sm:flex-1 sm:basis-0" aria-label="Field label" value={field.label}
           onChange={(e) => onChange((f) => { f.label = e.target.value; })} />
         <Badge>{TYPE_LABEL[field.type]}{field.unit ? ` · ${field.unit}` : ""}</Badge>
         <code className="text-[12px] text-soot/70">{field.key}</code>
@@ -240,7 +240,7 @@ function FieldEditor({ field, isNew, savedOptions, onChange, onRemove }: {
         )}
         <div className="ml-auto">
           {isNew
-            ? <button className="text-[13px] font-semibold text-danger-700 hover:underline" onClick={onRemove}>Remove</button>
+            ? <button className="text-[13px] font-semibold text-danger-700 hover:underline touch:px-1 touch:py-3" onClick={onRemove}>Remove</button>
             : <Check checked={!field.retired} onChange={(on) => onChange((f) => { f.retired = on ? undefined : true; })} label={<span className="text-[13px]">In use</span>} />}
         </div>
       </div>
@@ -250,18 +250,18 @@ function FieldEditor({ field, isNew, savedOptions, onChange, onRemove }: {
             {(field.options ?? []).map((o, oi) => {
               const kept = savedOptions.has(o.value);
               return (
-                <span key={o.value} className={"inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[13px] " +
+                <span key={o.value} className={"inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[13px] touch:py-0.5 " +
                   (o.retired ? "border-line bg-cream text-soot/60 line-through" : "border-line bg-paper text-ink")}>
-                  <input className="w-32 bg-transparent outline-none" aria-label={`Label for ${o.value}`} value={o.label}
+                  <input className="w-32 bg-transparent outline-none touch:py-2.5 touch:text-base" aria-label={`Label for ${o.value}`} value={o.label}
                     onChange={(e) => onChange((f) => { f.options![oi].label = e.target.value; })} />
                   {kept ? (
-                    <button className="text-[12px] font-semibold text-soot/80 no-underline hover:text-ink"
+                    <button className="text-[12px] font-semibold text-soot/80 no-underline hover:text-ink touch:min-h-[40px] touch:px-1.5"
                       title={o.retired ? "Offer this choice again" : "Stop offering this choice"}
                       onClick={() => onChange((f) => { f.options![oi].retired = o.retired ? undefined : true; })}>
                       {o.retired ? "restore" : "retire"}
                     </button>
                   ) : (
-                    <button className="text-[12px] font-semibold text-danger-700" title="Remove (not saved yet)"
+                    <button className="text-[12px] font-semibold text-danger-700 touch:min-h-[40px] touch:min-w-[32px]" title="Remove (not saved yet)"
                       onClick={() => onChange((f) => { f.options = f.options!.filter((x) => x.value !== o.value); })}>×</button>
                   )}
                 </span>
@@ -269,7 +269,7 @@ function FieldEditor({ field, isNew, savedOptions, onChange, onRemove }: {
             })}
           </div>
           <div className="mt-2 flex max-w-sm gap-2">
-            <input className="input !py-1.5 text-[13px]" placeholder="New choice" value={newOpt}
+            <input className="input !py-1.5 text-[13px] touch:text-base" placeholder="New choice" value={newOpt}
               onChange={(e) => setNewOpt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOption(); } }} />
             <button className="btn-secondary !py-1.5 text-[13px]" disabled={!newOpt.trim() || values.has(newOpt.trim())} onClick={addOption}>Add</button>
           </div>
@@ -339,7 +339,7 @@ function AddField({ taken, earlier, onAdd, onClose }: {
         </div>
         <div>
           <label className="label">Key (permanent)</label>
-          <input className="input font-mono text-[13px]" value={k} onChange={(e) => { setKey(e.target.value); setKeyTouched(true); }} />
+          <input className="input font-mono text-[13px] touch:text-base" value={k} onChange={(e) => { setKey(e.target.value); setKeyTouched(true); }} />
         </div>
         <div>
           <label className="label">Type</label>

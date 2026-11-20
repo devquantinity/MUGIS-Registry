@@ -71,13 +71,13 @@ export default function AccessRequestsPage() {
         <div role="tablist" className="inline-flex rounded-xl bg-ink/[0.05] p-1">
           {(["incoming", "outgoing"] as Box[]).map((b) => (
             <button key={b} role="tab" aria-selected={box === b} onClick={() => switchBox(b)}
-              className={"rounded-lg px-3 py-1.5 text-[13.5px] font-semibold transition-colors " +
+              className={"rounded-lg px-3 py-1.5 text-[13.5px] font-semibold transition-colors touch:py-2.5 " +
                 (box === b ? "bg-paper text-ink shadow-sm" : "text-soot hover:text-ink")}>
               {b === "incoming" ? "For me to decide" : "Sent by me"}
             </button>
           ))}
         </div>
-        <div className="w-44">
+        <div className="w-36 sm:w-44">
           <Select ariaLabel="Status" value={status} onChange={(v) => { setStatus(v); setPage(1); }}
             options={[{ value: "pending", label: "Pending" }, { value: "approved", label: "Approved" },
               { value: "denied", label: "Denied" }, { value: "", label: "All" }]} />
@@ -98,7 +98,55 @@ export default function AccessRequestsPage() {
         />
       ) : (
         <>
-          <Table head={
+          {/* Phones and tablets: one card per request (two across on a tablet),
+              with the decision buttons full width. */}
+          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
+            {items.map((r) => (
+              <li key={r.id} className="card min-w-0 p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    {box === "incoming" ? (
+                      <>
+                        <p className="text-base font-semibold leading-snug text-ink">{r.requester.full_name || r.requester.email}</p>
+                        <p className="text-[13px] text-soot/72">{API_ROLE_LABELS[r.requester.role]}</p>
+                      </>
+                    ) : (
+                      <p className="text-base font-semibold leading-snug text-ink">{r.patient_name ?? r.registry_no ?? "Patient by identity number"}</p>
+                    )}
+                  </div>
+                  <Badge tone={STATUS_TONE[r.status]} className="mt-0.5 shrink-0">{r.status}</Badge>
+                </div>
+                <dl className="mt-2.5 grid grid-cols-[auto,minmax(0,1fr)] gap-x-3 gap-y-1 text-[13.5px]">
+                  {(box === "incoming" || r.registry_no) && (
+                    <>
+                      <dt className="text-soot/72">Patient</dt>
+                      <dd className="min-w-0 text-ink">
+                        {r.registry_no
+                          ? <Link href={`/patients/${r.patient_id}`} className="font-mono text-[13px] underline decoration-ink/20 underline-offset-2">{r.registry_no}</Link>
+                          : "—"}
+                        {box === "incoming" && r.patient_name ? ` · ${r.patient_name}` : ""}
+                      </dd>
+                    </>
+                  )}
+                  <dt className="text-soot/72">Access</dt>
+                  <dd className="text-ink">{r.permission === "edit" ? "View and edit" : "View"}</dd>
+                  {r.reason && (<><dt className="text-soot/72">Reason</dt><dd className="min-w-0 break-words text-ink">{r.reason}</dd></>)}
+                  <dt className="text-soot/72">Sent</dt>
+                  <dd className="text-ink">{fmtDateTime(r.created_at)}</dd>
+                  {r.decided_at && (<><dt className="text-soot/72">Decided</dt><dd className="text-ink">{fmtDateTime(r.decided_at)}</dd></>)}
+                  {r.decision_note && (<><dt className="text-soot/72">Note</dt><dd className="min-w-0 break-words text-ink">“{r.decision_note}”</dd></>)}
+                </dl>
+                {box === "incoming" && r.status === "pending" && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button className="btn-secondary" onClick={() => setDeciding({ req: r, approve: false })}>Deny</button>
+                    <button className="btn-primary" onClick={() => setDeciding({ req: r, approve: true })}>Approve</button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <Table className="hidden lg:block" head={
             <tr>
               <Th>Patient</Th>
               <Th>{box === "incoming" ? "Requested by" : "Status"}</Th>
@@ -148,7 +196,7 @@ export default function AccessRequestsPage() {
             ))}
           </Table>
           {pages > 1 && (
-            <div className="mt-3 flex items-center justify-end gap-2 text-[13px]">
+            <div className="mt-3 flex items-center justify-between gap-2 text-[13px] sm:justify-end">
               <button className="btn-ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
               <span className="text-soot/72">Page {page} of {pages}</span>
               <button className="btn-ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</button>

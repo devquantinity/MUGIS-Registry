@@ -18,6 +18,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Draw under the notch / home indicator; the shell pads with safe-area insets.
+  viewportFit: "cover",
   themeColor: "#006C38",
 };
 

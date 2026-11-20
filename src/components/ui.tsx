@@ -37,7 +37,7 @@ export function Breadcrumbs() {
             </svg>
           )}
           {c.href ? (
-            <Link href={c.href} className="transition-colors hover:text-forest-600">{c.label}</Link>
+            <Link href={c.href} className="transition-colors hover:text-forest-600 touch:-my-3 touch:py-3">{c.label}</Link>
           ) : (
             <span>{c.label}</span>
           )}
@@ -53,10 +53,10 @@ export function PageHeader({ title, subtitle, actions, crumbs = true }: {
   crumbs?: boolean;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
+    <div className="mb-5 flex flex-wrap items-start justify-between gap-3 sm:mb-6">
+      <div className="min-w-0 max-w-full">
         {crumbs && <Breadcrumbs />}
-        <h1 className="font-display text-[24px] font-semibold tracking-[-0.01em] text-ink">{title}</h1>
+        <h1 className="break-words font-display text-[22px] font-semibold leading-tight tracking-[-0.01em] text-ink sm:text-[24px]">{title}</h1>
         {subtitle && <p className="mt-1 max-w-[80ch] text-[15px] leading-relaxed text-soot/78">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -272,7 +272,7 @@ export function Check({ checked, onChange, label, hint, disabled, tone = "forest
     ? "border-gold-500 bg-gold-500 text-goldink"
     : "border-forest-500 bg-forest-500 text-white";
   return (
-    <label className={"group flex cursor-pointer items-start gap-3 " + (disabled ? "cursor-not-allowed opacity-50" : "")}>
+    <label className={"group flex cursor-pointer items-start gap-3 touch:min-h-[44px] touch:items-center " + (disabled ? "cursor-not-allowed opacity-50" : "")}>
       <span className="relative mt-[1px] flex h-[18px] w-[18px] shrink-0 items-center justify-center">
         <input
           type="checkbox"
@@ -339,19 +339,23 @@ export function Modal({ open, onClose, title, children, wide }: {
   // Portalled to <body>: an ancestor with backdrop-filter (the frosted header,
   // cards) becomes the containing block for position:fixed, which pins the
   // dialog inside that element instead of the viewport.
+  // On a phone this is a bottom sheet: full width, anchored to the bottom edge
+  // where thumbs are, and clear of the home indicator. From `sm` up it is the
+  // centred dialog it always was.
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4 short:p-2">
       <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className={`relative z-10 max-h-[85vh] w-full overflow-y-auto rounded-2xl border border-white/60 dark:border-white/[0.08] bg-white/85 dark:bg-paper/90 shadow-raised backdrop-blur-xl ${wide ? "max-w-3xl" : "max-w-lg"}`}>
-        <div className="sticky top-0 flex items-center justify-between border-b border-ink/[0.06] bg-white/85 dark:bg-paper/90 px-5 py-3.5 backdrop-blur-xl">
+      <div role="dialog" aria-modal="true" aria-label={title}
+        className={`mg-sheet relative z-10 max-h-sheet w-full overflow-y-auto overscroll-contain rounded-t-3xl border border-white/60 dark:border-white/[0.08] bg-white/95 dark:bg-paper/95 shadow-raised backdrop-blur-xl sm:max-h-[85vh] sm:rounded-2xl short:max-h-[calc(100dvh-1rem)] sm:bg-white/85 sm:dark:bg-paper/90 ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"}`}>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ink/[0.06] bg-white/95 dark:bg-paper/95 px-5 py-3.5 backdrop-blur-xl sm:bg-white/85 sm:dark:bg-paper/90">
           <h3 className="font-display text-base font-bold text-ink">{title}</h3>
-          <button onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-soot hover:bg-cream">
+          <button onClick={onClose} aria-label="Close" className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-full text-soot hover:bg-cream touch:h-11 touch:w-11">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="px-5 pb-[max(1rem,var(--safe-bottom))] pt-4 sm:pb-4">{children}</div>
       </div>
     </div>,
     document.body
@@ -424,7 +428,7 @@ export function Toast({ message, onDone }: {
   const tone = TOAST_TONE[data.tone ?? "success"];
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-4 top-5 z-[80] flex justify-center sm:inset-x-auto sm:right-5 sm:top-[76px] sm:justify-end">
+    <div className="pointer-events-none fixed inset-x-4 top-[calc(var(--safe-top)+0.75rem)] z-[80] flex justify-center sm:inset-x-auto sm:right-5 sm:top-[76px] sm:justify-end">
       <div
         role="status"
         aria-live="polite"
@@ -482,11 +486,13 @@ export function Toast({ message, onDone }: {
 
 /* ---------------- table ---------------- */
 
-export function Table({ head, children, minWidth = 720 }: {
+export function Table({ head, children, minWidth = 720, className = "" }: {
   head: React.ReactNode; children: React.ReactNode; minWidth?: number;
+  /** e.g. `hidden md:block` when the page draws cards on a phone instead. */
+  className?: string;
 }) {
   return (
-    <div className="card overflow-x-auto">
+    <div className={`card overflow-x-auto ${className}`}>
       <table className="w-full border-collapse" style={{ minWidth }}>
         <thead className="border-b border-ink/[0.06]">{head}</thead>
         <tbody className="divide-y divide-ink/[0.05]">{children}</tbody>

@@ -126,7 +126,7 @@ export default function RegisterPage() {
 
         <FormError>{loadError}</FormError>
 
-        <div className="mt-5 grid gap-3.5">
+        <div className="mt-5 grid grid-cols-1 gap-3.5">
           <div>
             <label htmlFor="full_name" className="label">Full name</label>
             <input id="full_name" className={"input" + bad("full_name")} {...invalid("full_name")} value={form.full_name} onChange={(e) => set("full_name", e.target.value)} onBlur={touch("full_name")} autoComplete="name" placeholder="Dr Nur Aisyah binti Rahman" />
@@ -161,7 +161,7 @@ export default function RegisterPage() {
               <FieldError id="id_number" text={shown("id_number")} />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="label">Centre</label>
               <Select

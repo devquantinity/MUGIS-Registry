@@ -114,7 +114,7 @@ export default function LoginScreen() {
           <div className="mt-4">
             <div className="flex items-baseline justify-between">
               <label htmlFor="password" className="label">Password</label>
-              <Link href="/forgot-password" className="text-[13px] font-medium text-forest-600 hover:underline">
+              <Link href="/forgot-password" className="text-[13px] font-medium text-forest-600 hover:underline touch:-my-3 touch:py-3">
                 Forgot password?
               </Link>
             </div>
@@ -151,7 +151,7 @@ export default function LoginScreen() {
         >
           <button
             type="button" onClick={back}
-            className="mb-4 inline-flex items-center gap-1.5 text-[14.5px] font-medium text-soot/75 transition-colors hover:text-ink"
+            className="mb-4 inline-flex items-center gap-1.5 text-[14.5px] font-medium text-soot/75 transition-colors hover:text-ink touch:-mt-2.5 touch:mb-1.5 touch:py-2.5"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
