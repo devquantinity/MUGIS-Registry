@@ -37,7 +37,7 @@ export default function ProfilePage() {
               <Badge tone="muted">{me.status}</Badge>
             </div>
           </div>
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+          <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto">
             <button onClick={() => setEdit(true)} className="btn-secondary">Edit details</button>
             <button onClick={() => setPw(true)} className="btn-secondary">Change password</button>
           </div>

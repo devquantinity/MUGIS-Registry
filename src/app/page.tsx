@@ -7,7 +7,7 @@ import { CLINICAL, ROLE_LABELS, useSession } from "@/lib/session";
 import { api, type AccessRequest, type Patient } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
 import { fmtDate } from "@/lib/format";
-import { Badge, Card, PageHeader, SectionTitle, Stat } from "@/components/ui";
+import { Badge, Card, PageHeader, SectionTitle, Stat, StatList, type StatItem } from "@/components/ui";
 
 type Counts = {
   patients?: number; incoming?: number; outgoing?: number;
@@ -70,6 +70,33 @@ export default function DashboardPage() {
   if (!session) return null;
   const n = (v?: number) => (v === undefined ? "…" : v);
 
+  const stats: StatItem[] = [];
+  if (clinical) {
+    stats.push(
+      { href: "/patients", label: "Patients you can see", value: n(counts.patients), icon: ICONS.patients, tone: "info" },
+      { href: "/patients/access-requests", label: "Access requests for you", value: n(counts.incoming), icon: ICONS.inbox, tone: counts.incoming ? "warn" : "muted", sub: "pending your decision" },
+      { href: "/patients/access-requests?box=outgoing", label: "Your requests", value: n(counts.outgoing), icon: ICONS.send, sub: "still pending" },
+    );
+  }
+  if (reviewer) {
+    stats.push({ href: "/admin/registrations", label: "Registrations to review", value: n(counts.registrations), icon: ICONS.users, tone: counts.registrations ? "warn" : "muted" });
+  }
+  if (role === "admin") {
+    stats.push(
+      { href: "/admin/users", label: "Users", value: n(counts.users), icon: ICONS.users },
+      { href: "/admin/centres", label: "Centres", value: n(counts.centres), icon: ICONS.centres },
+    );
+  }
+
+  const build = (
+    <>
+      <p className="mb-1.5 text-[13px] font-semibold text-sage-700">Available now</p>
+      <ul className="mb-3 grid grid-cols-1 gap-1 text-[13.5px] text-ink">{AVAILABLE.map((a) => <li key={a}>✓ {a}</li>)}</ul>
+      <p className="mb-1.5 text-[13px] font-semibold text-soot/80">Coming soon</p>
+      <ul className="grid grid-cols-1 gap-1 text-[13.5px] text-soot/80">{COMING.map((a) => <li key={a}>· {a}</li>)}</ul>
+    </>
+  );
+
   return (
     <div>
       <PageHeader
@@ -77,20 +104,14 @@ export default function DashboardPage() {
         subtitle={`${ROLE_LABELS[session.role]} · ${session.centreName}`}
       />
 
-      {/* two across on a phone; on a tablet or desktop as many as fit, so three tiles are one row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]">
-        {clinical && <>
-          <Link href="/patients"><Stat label="Patients you can see" value={n(counts.patients)} icon={ICONS.patients} tone="info" /></Link>
-          <Link href="/patients/access-requests"><Stat label="Access requests for you" value={n(counts.incoming)} icon={ICONS.inbox} tone={counts.incoming ? "warn" : "muted"} sub="pending your decision" /></Link>
-          <Link href="/patients/access-requests?box=outgoing"><Stat label="Your requests" value={n(counts.outgoing)} icon={ICONS.send} sub="still pending" /></Link>
-        </>}
-        {reviewer && (
-          <Link href="/admin/registrations"><Stat label="Registrations to review" value={n(counts.registrations)} icon={ICONS.users} tone={counts.registrations ? "warn" : "muted"} /></Link>
-        )}
-        {role === "admin" && <>
-          <Link href="/admin/users"><Stat label="Users" value={n(counts.users)} icon={ICONS.users} /></Link>
-          <Link href="/admin/centres"><Stat label="Centres" value={n(counts.centres)} icon={ICONS.centres} /></Link>
-        </>}
+      {/* phone and iPad portrait: one list; from lg, where every label fits on one line: tiles */}
+      <StatList items={stats} className="lg:hidden" />
+      <div className="hidden gap-3 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+        {stats.map((t) => (
+          <Link key={t.href + t.label} href={t.href} className="block h-full">
+            <Stat label={t.label} value={t.value} icon={t.icon} tone={t.tone} sub={t.sub} />
+          </Link>
+        ))}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -125,12 +146,20 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        <Card className={clinical ? "" : "lg:col-span-3"}>
+        {/* phone: tucked away behind one line; it is for testers, not for daily use */}
+        <details className="card group sm:hidden">
+          <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 text-[15px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+            What is in this build
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+              strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-soot/60 transition-transform group-open:rotate-180" aria-hidden>
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </summary>
+          <div className="px-4 pb-4">{build}</div>
+        </details>
+        <Card className={"hidden sm:block " + (clinical ? "" : "lg:col-span-3")}>
           <SectionTitle>In this build</SectionTitle>
-          <p className="mb-1.5 text-[13px] font-semibold text-sage-700">Available now</p>
-          <ul className="mb-3 grid gap-1 text-[13.5px] text-ink">{AVAILABLE.map((a) => <li key={a}>✓ {a}</li>)}</ul>
-          <p className="mb-1.5 text-[13px] font-semibold text-soot/80">Coming soon</p>
-          <ul className="grid gap-1 text-[13.5px] text-soot/80">{COMING.map((a) => <li key={a}>· {a}</li>)}</ul>
+          {build}
         </Card>
       </div>
     </div>

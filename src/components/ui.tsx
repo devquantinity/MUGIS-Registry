@@ -117,11 +117,12 @@ export function Stat({ label, value, sub, tone = "muted", icon, delta, deltaSub,
         {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
       </span>
     );
+  // h-full: tiles in one row end at the same line, whether or not they have a sub line
   return (
-    <div className="card p-4">
+    <div className="card h-full p-4">
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs text-soot/75">{label}</p>
-        {icon && <span className={`rounded-lg p-1 ${TONE[tone]}`}>{icon}</span>}
+        {icon && <span className={`shrink-0 rounded-lg p-1 ${TONE[tone]}`}>{icon}</span>}
       </div>
       <p className="mt-1.5 text-2xl font-semibold leading-none tabular-nums tracking-[-0.01em] text-ink">{value}</p>
       {(chip || sub || deltaSub) && (
@@ -131,6 +132,40 @@ export function Stat({ label, value, sub, tone = "muted", icon, delta, deltaSub,
         </p>
       )}
     </div>
+  );
+}
+
+export type StatItem = {
+  href: string; label: string; value: React.ReactNode; sub?: string; icon?: React.ReactNode; tone?: Tone;
+};
+
+/**
+ * The same numbers as a row of Stat tiles, for a phone: one card, a full-width
+ * row per number — label left, number right, the whole row a link. Tiles two
+ * to a row on a phone wrap their labels and end at different heights.
+ */
+export function StatList({ items, className = "" }: { items: StatItem[]; className?: string }) {
+  return (
+    <ul className={`card divide-y divide-ink/[0.06] overflow-hidden ${className}`}>
+      {items.map((s) => (
+        <li key={s.href + s.label}>
+          <Link href={s.href} className="flex min-h-[60px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-cream/50 active:bg-cream/80">
+            {s.icon && (
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${TONE[s.tone ?? "muted"]}`}>{s.icon}</span>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium leading-snug text-ink">{s.label}</span>
+              {s.sub && <span className="block text-[13px] leading-snug text-soot/72">{s.sub}</span>}
+            </span>
+            <span className="shrink-0 text-xl font-semibold tabular-nums text-ink">{s.value}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" className="-mr-1 shrink-0 text-soot/40" aria-hidden>
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 
