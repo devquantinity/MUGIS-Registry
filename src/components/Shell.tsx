@@ -8,6 +8,7 @@ import LoginScreen from "@/components/LoginScreen";
 import EnrolTwoFactor from "@/components/EnrolTwoFactor";
 import { api, errorText, API_BASE, API_ROLE_LABELS } from "@/lib/api";
 import PatientSearch from "@/components/PatientSearch";
+import NotificationsDrawer from "@/components/NotificationsDrawer";
 import { CLINICAL, SessionProvider, useSession, type Role } from "@/lib/session";
 import { Modal } from "@/components/ui";
 import { ACCENTS, ThemeProvider, useTheme } from "@/lib/theme";
@@ -608,7 +609,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 /* Phone top bar: where am I (logo, centre) and search. Navigation is the tab bar. */
-function MobileHeader({ onSearch }: { onSearch: () => void }) {
+function MobileHeader({ onSearch, onNotifications }: { onSearch: () => void; onNotifications: () => void }) {
   const { session } = useSession();
   const clinical = !!session && CLINICAL.includes(session.role);
   return (
@@ -625,6 +626,7 @@ function MobileHeader({ onSearch }: { onSearch: () => void }) {
               {ic(ICONS.search, 21)}
             </button>
           )}
+          <NotificationBell onOpen={onNotifications} compact />
           <CentreSwitcher align="right" />
         </div>
       </div>
@@ -724,6 +726,33 @@ function TabBar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: boolean })
 
 /* ---------------- header ---------------- */
 
+/** Bell for the clinical roles: opens the notifications drawer. The badge
+ *  counts access requests waiting on this user's decision. */
+function NotificationBell({ onOpen, compact }: { onOpen: () => void; compact?: boolean }) {
+  const { session } = useSession();
+  const counts = useNavCounts();
+  if (!session || !CLINICAL.includes(session.role)) return null;
+  const n = counts["/patients/access-requests"] ?? 0;
+  return (
+    <button
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      aria-label={n ? `Notifications, ${n} waiting for your decision` : "Notifications"}
+      title="Notifications"
+      className={compact
+        ? "relative flex h-11 w-11 items-center justify-center rounded-full text-forest-500 hover:bg-ink/[0.05]"
+        : "relative flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/60 bg-white/60 text-soot/72 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm transition-colors hover:bg-white/90 hover:text-ink dark:border-white/[0.08] dark:bg-white/[0.06] dark:hover:bg-white/[0.12] touch:h-11 touch:w-11"}
+    >
+      {ic(ICONS.bell, compact ? 21 : 16)}
+      {n > 0 && (
+        <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gold-500 px-1 text-[11px] font-bold tabular-nums text-goldink ring-2 ring-paper">
+          {n > 99 ? "99+" : n}
+        </span>
+      )}
+    </button>
+  );
+}
+
 const SHORTCUTS: [string, string][] = [
   ["⌘K  or  /", "Search patients"],
   ["↑ ↓ and ↵", "Navigate and open search results"],
@@ -812,7 +841,7 @@ function CentreSwitcher({ align = "left" }: { align?: "left" | "right" }) {
   );
 }
 
-function Topbar({ onSearch }: { onSearch: () => void }) {
+function Topbar({ onSearch, onNotifications }: { onSearch: () => void; onNotifications: () => void }) {
   const { session } = useSession();
   const [helpOpen, setHelpOpen] = useState(false);
   if (!session) return null;
@@ -853,6 +882,8 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
         </button>
 
 
+        <NotificationBell onOpen={onNotifications} />
+
         <span className="h-4 w-px bg-ink/[0.08]" />
 
         <Link
@@ -883,9 +914,11 @@ function Topbar({ onSearch }: { onSearch: () => void }) {
 function Frame({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const closeNotes = React.useCallback(() => setNotesOpen(false), []);
   const pathname = usePathname();
   const counts = useLiveNavCounts();
-  useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [pathname]);
+  useEffect(() => { setMenuOpen(false); setSearchOpen(false); setNotesOpen(false); }, [pathname]);
 
   // ⌘K / Ctrl+K anywhere; "/" outside form fields
   useEffect(() => {
@@ -915,6 +948,7 @@ function Frame({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <PatientSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <NotificationsDrawer open={notesOpen} onClose={closeNotes} />
       {/* the floating content sheet — inset so the gradient shows around it */}
       <div className="min-h-app xl:py-3 xl:pl-[268px] xl:pr-3">
         <div
@@ -926,8 +960,8 @@ function Frame({ children }: { children: React.ReactNode }) {
             ].join(", "),
           }}
         >
-          <MobileHeader onSearch={() => setSearchOpen(true)} />
-          <Topbar onSearch={() => setSearchOpen(true)} />
+          <MobileHeader onSearch={() => setSearchOpen(true)} onNotifications={() => setNotesOpen(true)} />
+          <Topbar onSearch={() => setSearchOpen(true)} onNotifications={() => setNotesOpen(true)} />
           {/* bottom padding clears the tab bar (--tabbar-h is 0 from xl) */}
           <main id="main" className="mx-auto w-full max-w-[1720px] px-4 pb-[calc(var(--tabbar-h)+1.75rem)] pt-5 sm:px-6 xl:pb-10 xl:pt-6 2xl:px-8">
             {children}

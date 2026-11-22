@@ -153,9 +153,10 @@ export type DashboardFigures = {
 };
 /** A centre (sub = its code) or the doctor who added the patients (sub = role). */
 export type DashboardGroup = DashboardFigures & { id: string; label: string; sub: string };
-export type DashboardOverview = { group_by: DashboardGroupBy; totals: DashboardFigures; groups: DashboardGroup[]; generated_at: string };
+export type DashboardOverview = { group_by: DashboardGroupBy; centre_id: string | null; totals: DashboardFigures; groups: DashboardGroup[]; generated_at: string };
 export type NewDiagnoses = {
   group_by: DashboardGroupBy;
+  centre_id: string | null;
   cancer_type: string | null;
   /** "YYYY-MM", oldest first. */
   months: string[];
@@ -423,9 +424,10 @@ export const api = {
     request<AccessRequest>("POST", `/patient-access-requests/${id}/${approve ? "approve" : "deny"}`, note ? { note } : {}),
 
   // dashboard — clinical roles
-  dashboardOverview: (group_by: DashboardGroupBy) =>
-    request<DashboardOverview>("GET", `/dashboard/overview${qs({ group_by })}`),
-  newDiagnoses: (q: { group_by: DashboardGroupBy; cancer_type?: string; months?: number }) =>
+  /** centre_id: only that hospital (a Head of Service's centre picker). */
+  dashboardOverview: (q: { group_by: DashboardGroupBy; centre_id?: string }) =>
+    request<DashboardOverview>("GET", `/dashboard/overview${qs(q)}`),
+  newDiagnoses: (q: { group_by: DashboardGroupBy; centre_id?: string; cancer_type?: string; months?: number }) =>
     request<NewDiagnoses>("GET", `/dashboard/new-diagnoses${qs(q)}`),
 
   // cancer episodes — forms are read by every signed-in role

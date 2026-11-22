@@ -20,9 +20,6 @@ const tico = (d: React.ReactNode) => (
     strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
 );
 const ICONS = {
-  patients: tico(<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>),
-  inbox: tico(<><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></>),
-  send: tico(<><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>),
   users: tico(<><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 12 0v1" /></>),
   centres: tico(<><path d="M3 21h18" /><path d="M5 21V7l7-4 7 4v14" /><path d="M10 21v-5h4v5" /></>),
 };
@@ -47,7 +44,6 @@ export default function DashboardPage() {
 
   const role = session?.role;
   const clinical = !!role && CLINICAL.includes(role);
-  const reviewer = role === "admin" || role === "head" || role === "hod";
 
   useEffect(() => {
     if (!role) return;
@@ -58,32 +54,24 @@ export default function DashboardPage() {
       api.patients({ page_size: 5 }).then((r) => { put("patients")(r.page.total); if (alive) setRecent(r.items); }).catch(quiet);
       api.accessRequests({ box: "incoming", status: "pending", page_size: 5 })
         .then((r) => { put("incoming")(r.page.total); if (alive) setWaiting(r.items); }).catch(quiet);
-      api.accessRequests({ box: "outgoing", status: "pending", page_size: 1 }).then((r) => put("outgoing")(r.page.total)).catch(quiet);
     }
-    if (reviewer) api.registrations({ page_size: 1 }).then((r) => put("registrations")(r.page.total)).catch(quiet);
     if (role === "admin") {
+      api.registrations({ page_size: 1 }).then((r) => put("registrations")(r.page.total)).catch(quiet);
       api.users({ page_size: 1 }).then((r) => put("users")(r.page.total)).catch(quiet);
       api.adminCentres().then((c) => put("centres")(c.length)).catch(quiet);
     }
     return () => { alive = false; };
-  }, [role, clinical, reviewer]);
+  }, [role, clinical]);
 
   if (!session) return null;
   const n = (v?: number) => (v === undefined ? "…" : v);
 
+  // System Admin only: clinical roles find access requests under the
+  // header's notification bell, and the figures in the overview below.
   const stats: StatItem[] = [];
-  if (clinical) {
-    stats.push(
-      { href: "/patients", label: "Patients you can see", value: n(counts.patients), icon: ICONS.patients, tone: "info" },
-      { href: "/patients/access-requests", label: "Access requests for you", value: n(counts.incoming), icon: ICONS.inbox, tone: counts.incoming ? "warn" : "muted", sub: "pending your decision" },
-      { href: "/patients/access-requests?box=outgoing", label: "Your requests", value: n(counts.outgoing), icon: ICONS.send, sub: "still pending" },
-    );
-  }
-  if (reviewer) {
-    stats.push({ href: "/admin/registrations", label: "Registrations to review", value: n(counts.registrations), icon: ICONS.users, tone: counts.registrations ? "warn" : "muted" });
-  }
   if (role === "admin") {
     stats.push(
+      { href: "/admin/registrations", label: "Registrations to review", value: n(counts.registrations), icon: ICONS.users, tone: counts.registrations ? "warn" : "muted" },
       { href: "/admin/users", label: "Users", value: n(counts.users), icon: ICONS.users },
       { href: "/admin/centres", label: "Centres", value: n(counts.centres), icon: ICONS.centres },
     );
@@ -105,15 +93,17 @@ export default function DashboardPage() {
         subtitle={`${ROLE_LABELS[session.role]} · ${session.centreName}`}
       />
 
-      {/* phone and iPad portrait: one list; from lg, where every label fits on one line: tiles */}
-      <StatList items={stats} className="lg:hidden" />
-      <div className="hidden gap-3 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
-        {stats.map((t) => (
-          <Link key={t.href + t.label} href={t.href} className="block h-full">
-            <Stat label={t.label} value={t.value} icon={t.icon} tone={t.tone} sub={t.sub} />
-          </Link>
-        ))}
-      </div>
+      {stats.length > 0 && <>
+        {/* phone and iPad portrait: one list; from lg, where every label fits on one line: tiles */}
+        <StatList items={stats} className="lg:hidden" />
+        <div className="hidden gap-3 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+          {stats.map((t) => (
+            <Link key={t.href + t.label} href={t.href} className="block h-full">
+              <Stat label={t.label} value={t.value} icon={t.icon} tone={t.tone} sub={t.sub} />
+            </Link>
+          ))}
+        </div>
+      </>}
 
       {clinical && <DashboardOverview />}
 

@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import { CHART, Card, DonutChart, HBar, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/Select";
+import { useSession } from "@/lib/session";
 
 /** Categorical hues for groups, in fixed order; a fifth group and on fold into Other. */
 const GROUP_HUES = CHART.cat;
@@ -48,7 +49,11 @@ function errorText(e: unknown) {
 }
 
 export function DashboardOverview() {
+  const { session } = useSession();
   const [by, setBy] = useState<DashboardGroupBy>("centre");
+  // A Head of Service sees several hospitals and may look at one at a time.
+  const centres = session?.role === "head" ? session.user.centres : [];
+  const [centre, setCentre] = useState("");
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,11 +61,11 @@ export function DashboardOverview() {
     let alive = true;
     setOverview(null);
     setError(null);
-    api.dashboardOverview(by)
+    api.dashboardOverview({ group_by: by, centre_id: centre || undefined })
       .then((o) => { if (alive) setOverview(o); })
       .catch((e) => { if (alive) setError(errorText(e)); });
     return () => { alive = false; };
-  }, [by]);
+  }, [by, centre]);
 
   // Colour follows the group, not its rank in a chart: fixed from the
   // overview's order (most patients first), so filtering diagnoses by cancer
@@ -76,14 +81,24 @@ export function DashboardOverview() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-[17px] font-semibold text-ink">Registry overview</h2>
-          <p className="text-[13px] text-soot/72">Patients you can see, {by === "centre" ? "by hospital" : "by the doctor who added them"}</p>
+          <p className="text-[13px] text-soot/72">
+            Patients you can see{centre ? ` at ${centres.find((c) => c.id === centre)?.name ?? "this hospital"}` : ""}, {by === "centre" ? "by hospital" : "by the doctor who added them"}
+          </p>
         </div>
-        <Segmented
+        <div className="flex flex-wrap items-center gap-2">
+          {centres.length > 1 && (
+            <div className="w-[min(15rem,60vw)]">
+              <Select ariaLabel="Hospital" value={centre} onChange={setCentre} size="sm"
+                options={[{ value: "", label: "All hospitals" }, ...centres.map((c) => ({ value: c.id, label: c.name, hint: c.code }))]} />
+            </div>
+          )}
+          <Segmented
           value={by}
           onChange={setBy}
           options={[["centre", "By hospital"], ["individual", "Yours"]]}
           ariaLabel="Group figures"
         />
+        </div>
       </div>
 
       {error && <Card><p className="text-sm text-danger-700">{error}</p></Card>}
@@ -92,7 +107,7 @@ export function DashboardOverview() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PatientsCard overview={overview} by={by} />
           <CompletenessCard overview={overview} by={by} />
-          <NewDiagnosesCard by={by} hueOf={hueOf} ready={!!overview} />
+          <NewDiagnosesCard by={by} centre={centre} hueOf={hueOf} ready={!!overview} />
           <SurgicalApproachCard overview={overview} by={by} />
         </div>
       )}
@@ -170,8 +185,8 @@ function CompletenessCard({ overview, by }: { overview: Overview | null; by: Das
   );
 }
 
-function NewDiagnosesCard({ by, hueOf, ready }: {
-  by: DashboardGroupBy; hueOf: (id: string) => string | undefined; ready: boolean;
+function NewDiagnosesCard({ by, centre, hueOf, ready }: {
+  by: DashboardGroupBy; centre: string; hueOf: (id: string) => string | undefined; ready: boolean;
 }) {
   const [types, setTypes] = useState<CancerType[]>([]);
   const [type, setType] = useState("");
@@ -183,11 +198,11 @@ function NewDiagnosesCard({ by, hueOf, ready }: {
     let alive = true;
     setData(null);
     setError(null);
-    api.newDiagnoses({ group_by: by, cancer_type: type || undefined })
+    api.newDiagnoses({ group_by: by, centre_id: centre || undefined, cancer_type: type || undefined })
       .then((d) => { if (alive) setData(d); })
       .catch((e) => { if (alive) setError(errorText(e)); });
     return () => { alive = false; };
-  }, [by, type]);
+  }, [by, centre, type]);
 
   // Up to four groups keep their own hue; the rest fold into Other.
   const series = useMemo(() => {
