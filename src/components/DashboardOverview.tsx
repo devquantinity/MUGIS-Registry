@@ -86,7 +86,7 @@ export function DashboardOverview() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {centres.length > 1 && (
+          {centres.length > 0 && (
             <div className="w-[min(15rem,60vw)]">
               <Select ariaLabel="Hospital" value={centre} onChange={setCentre} size="sm"
                 options={[{ value: "", label: "All hospitals" }, ...centres.map((c) => ({ value: c.id, label: c.name, hint: c.code }))]} />
