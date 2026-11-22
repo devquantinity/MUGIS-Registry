@@ -8,6 +8,7 @@ import { api, type AccessRequest, type Patient } from "@/lib/api";
 import { ACCESS_LABEL } from "@/lib/patientAccess";
 import { fmtDate } from "@/lib/format";
 import { Badge, Card, PageHeader, SectionTitle, Stat, StatList, type StatItem } from "@/components/ui";
+import { DashboardOverview } from "@/components/DashboardOverview";
 
 type Counts = {
   patients?: number; incoming?: number; outgoing?: number;
@@ -113,6 +114,8 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {clinical && <DashboardOverview />}
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {clinical && (

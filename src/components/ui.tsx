@@ -716,12 +716,14 @@ export function DonutChart({ data, size = 148, unit = "", palette, stacked }: {
   );
 }
 
-export function HBar({ data, format, color }: {
+export function HBar({ data, format, color, max: fixedMax }: {
   data: { label: string; value: number }[];
   format?: (n: number) => string;
   color?: string;
+  /** Fixed scale end (e.g. 100 for percentages); defaults to the largest value. */
+  max?: number;
 }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
+  const max = fixedMax ?? Math.max(1, ...data.map((d) => d.value));
   const fill = color ?? "var(--chart-accent)";
   return (
     <ul className="space-y-0.5">

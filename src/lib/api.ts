@@ -140,6 +140,31 @@ export type FormSection = { key: string; label: string; help?: string; retired?:
 export type FormDefinition = { sections: FormSection[] };
 
 export type CancerType = { code: string; name: string; form_version: number };
+
+// dashboard — counts over the patients the caller can see (row-level security)
+export type DashboardGroupBy = "centre" | "individual";
+export type SurgicalApproach = { open: number; laparoscopic: number; robotic: number; no_surgery: number; not_recorded: number };
+export type DashboardFigures = {
+  patients: number;
+  cancer_records: number;
+  /** Mean form completion, 0–100; null with no records. */
+  average_completeness: number | null;
+  surgical_approach: SurgicalApproach;
+};
+/** A centre (sub = its code) or the doctor who added the patients (sub = role). */
+export type DashboardGroup = DashboardFigures & { id: string; label: string; sub: string };
+export type DashboardOverview = { group_by: DashboardGroupBy; totals: DashboardFigures; groups: DashboardGroup[]; generated_at: string };
+export type NewDiagnoses = {
+  group_by: DashboardGroupBy;
+  cancer_type: string | null;
+  /** "YYYY-MM", oldest first. */
+  months: string[];
+  counts: number[];
+  total: number;
+  /** Records with no date of diagnosis yet. */
+  undated: number;
+  groups: { id: string; label: string; sub: string; counts: number[]; total: number }[];
+};
 export type CancerForm = { code: string; name: string; version: number; created_at: string; form: FormDefinition };
 
 export type Answer = string | number | string[];
@@ -396,6 +421,12 @@ export const api = {
     request<{ items: AccessRequest[]; page: Page }>("GET", `/patient-access-requests${qs(q)}`),
   decideAccess: (id: string, approve: boolean, note?: string) =>
     request<AccessRequest>("POST", `/patient-access-requests/${id}/${approve ? "approve" : "deny"}`, note ? { note } : {}),
+
+  // dashboard — clinical roles
+  dashboardOverview: (group_by: DashboardGroupBy) =>
+    request<DashboardOverview>("GET", `/dashboard/overview${qs({ group_by })}`),
+  newDiagnoses: (q: { group_by: DashboardGroupBy; cancer_type?: string; months?: number }) =>
+    request<NewDiagnoses>("GET", `/dashboard/new-diagnoses${qs(q)}`),
 
   // cancer episodes — forms are read by every signed-in role
   cancerTypes: () => request<CancerType[]>("GET", "/cancer-types"),
