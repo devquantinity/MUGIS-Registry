@@ -14,7 +14,6 @@ const CRUMBS: [RegExp, Crumb[]][] = [
   [/^\/admin\/forms/, [{ label: "Administration" }, { label: "Cancer forms" }]],
   [/^\/reports\/export/, [{ label: "Reports", href: "/reports" }, { label: "Data export" }]],
   [/^\/reports/, [{ label: "Reports" }]],
-  [/^\/admin\/approvals/, [{ label: "Administration" }, { label: "Export approvals" }]],
   [/^\/admin\/users/, [{ label: "Administration" }, { label: "Users" }]],
   [/^\/admin\/centres/, [{ label: "Administration" }, { label: "Centres" }]],
   [/^\/admin\/audit/, [{ label: "Administration" }, { label: "Audit trail" }]],

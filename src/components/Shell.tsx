@@ -187,7 +187,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/", label: "Dashboard", icon: ic(ICONS.dashboard) },
       { href: "/reports", label: "Reports", icon: ic(ICONS.reports), soon: true },
-      { href: "/reports/export", label: "Data Export", icon: ic(ICONS.export), soon: true },
+      { href: "/reports/export", label: "Data Export", icon: ic(ICONS.export) },
     ],
   },
   {
@@ -201,13 +201,6 @@ const NAV: NavGroup[] = [
   {
     title: "Administration",
     items: [
-      {
-        href: "/admin/approvals",
-        label: "Export Approvals",
-        icon: ic(ICONS.approvals),
-        roles: ["hod"],
-        soon: true,
-      },
       {
         href: "/admin/registrations",
         label: "Registrations",

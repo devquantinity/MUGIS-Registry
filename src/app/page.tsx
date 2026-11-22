@@ -31,8 +31,9 @@ const AVAILABLE = [
   "Patient demography: register, search, view, edit",
   "Duplicate check by MyKad / passport, and access requests",
   "Cancer records: a form per cancer type, with progress",
+  "Data export: Excel, CSV and PDF, encrypted, with an optional password",
 ];
-const COMING = ["Computed staging (AJCC, NIH)", "Reports and data export", "Export approvals", "Audit trail"];
+const COMING = ["Computed staging (AJCC, NIH)", "Reports", "Audit trail"];
 
 /** Overview built only from live API numbers. */
 export default function DashboardPage() {

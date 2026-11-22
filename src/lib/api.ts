@@ -188,6 +188,31 @@ export type Episode = EpisodeSummary & {
   dropped?: string[];
 };
 
+// data export — clinical roles request and download; the System Admin reads the log
+export type ExportFormat = "csv" | "xlsx" | "pdf";
+export type ExportStatus = "queued" | "running" | "ready" | "failed" | "expired";
+export type ExportFilters = {
+  cancer_types: string[]; centre_id: string | null;
+  diagnosed_from: string | null; diagnosed_to: string | null; groups: string[];
+};
+export type ExportRequest = {
+  format: ExportFormat; cancer_types?: string[]; centre_id?: string;
+  diagnosed_from?: string; diagnosed_to?: string; groups?: string[];
+  /** Locks the file itself; never stored past the build. */
+  password?: string;
+};
+export type ExportJob = {
+  id: string; status: ExportStatus; format: ExportFormat; filters: ExportFilters; password_protected: boolean;
+  row_count: number | null;
+  /** Rows that carried personal data (patients you own or hold a grant for). */
+  identified_rows: number | null;
+  patient_count: number | null; size_bytes: number | null; file_name: string | null;
+  /** export_empty | export_failed | account_inactive */
+  error_reason: string | null;
+  created_at: string; ready_at: string | null; expires_at: string | null;
+};
+export type AdminExport = ExportJob & { user: { id: string; email: string; full_name: string | null }; downloads: number };
+
 // ─── Errors ──────────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -335,6 +360,32 @@ export async function request<T>(method: Method, path: string, body?: unknown): 
   }
 }
 
+/**
+ * A file download (POST with a JSON body, binary reply). Errors arrive in the
+ * usual JSON envelope. One refresh-and-retry on an expired token, as request
+ * does — but not on a wrong authenticator code, which is also a 401.
+ */
+export async function requestFile(path: string, body: unknown): Promise<{ blob: Blob; filename: string }> {
+  const send = (access: string | null) => fetch(`${API_BASE}/api/v1${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(access ? { Authorization: `Bearer ${access}` } : {}) },
+    body: JSON.stringify(body),
+  });
+  let res = await send(readTokens()?.access ?? null);
+  if (!res.ok) {
+    let env: { message?: string; reason?: string } = {};
+    try { env = await res.clone().json(); } catch { /* not JSON */ }
+    if (res.status === 401 && env.reason === "unauthorized" && (await refreshTokens())) {
+      res = await send(readTokens()?.access ?? null);
+      if (!res.ok) { try { env = await res.json(); } catch { env = {}; } }
+    }
+    if (!res.ok) throw new ApiError(res.status, env.reason ?? "internal_error", env.message ?? `HTTP ${res.status}`);
+  }
+  const disp = res.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="?([^";]+)"?/.exec(disp)?.[1] ?? "mugis-export";
+  return { blob: await res.blob(), filename };
+}
+
 /** A public request — no token, no refresh. */
 export function publicRequest<T>(method: Method, path: string, body?: unknown): Promise<T> {
   return rawRequest<T>(method, path, body, null);
@@ -429,6 +480,15 @@ export const api = {
     request<DashboardOverview>("GET", `/dashboard/overview${qs(q)}`),
   newDiagnoses: (q: { group_by: DashboardGroupBy; centre_id?: string; cancer_type?: string; months?: number }) =>
     request<NewDiagnoses>("GET", `/dashboard/new-diagnoses${qs(q)}`),
+
+  // data export — clinical roles; files are encrypted and expire
+  requestExport: (body: ExportRequest) => request<ExportJob>("POST", "/exports", body),
+  exports: () => request<{ items: ExportJob[] }>("GET", "/exports"),
+  exportJob: (id: string) => request<ExportJob>("GET", `/exports/${id}`),
+  /** Needs a fresh code from the authenticator app every time. */
+  downloadExport: (id: string, code: string) => requestFile(`/exports/${id}/download`, { code }),
+  adminExports: (q: { page?: number; page_size?: number } = {}) =>
+    request<{ items: AdminExport[]; page: Page }>("GET", `/admin/exports${qs(q)}`),
 
   // cancer episodes — forms are read by every signed-in role
   cancerTypes: () => request<CancerType[]>("GET", "/cancer-types"),

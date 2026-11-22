@@ -8,6 +8,10 @@ import type { NextConfig } from "next";
 const proxyTarget = process.env.API_PROXY_TARGET?.replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
+  // The "export ready" email links to /exports.
+  async redirects() {
+    return [{ source: "/exports", destination: "/reports/export", permanent: false }];
+  },
   async rewrites() {
     if (!proxyTarget) return [];
     return [
