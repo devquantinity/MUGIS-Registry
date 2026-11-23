@@ -187,7 +187,6 @@ function NewExport({ onQueued }: { onQueued: (j: ExportJob) => void }) {
         <div className="rounded-xl border border-forest-500/15 bg-forest-50/60 px-3.5 py-3 text-[13.5px] leading-relaxed text-ink/85 dark:bg-forest-500/10">
           You get every cancer record you can see in the patient list. Names, MyKad/passport numbers and other
           personal details are included <strong>only for patients you added or hold an approved access grant for</strong>.
-          For everyone else the record is de-identified: free-text notes and HPE numbers are left out too.
         </div>
 
         <fieldset>
