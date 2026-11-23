@@ -20,22 +20,16 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Draw under the notch / home indicator; the shell pads with safe-area insets.
   viewportFit: "cover",
-  themeColor: "#006C38",
+  themeColor: "#875F0A",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    // One fixed look: light, with the yellow accent (see src/lib/theme.tsx).
+    <html lang="en" data-accent="amber" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans">
-        {/* Apply the saved appearance before first paint — no light/dark flash. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              '(function(){try{var t=JSON.parse(localStorage.getItem("mugis.theme.v1")||"{}");var r=document.documentElement;if(t.mode==="dark")r.classList.add("dark");r.setAttribute("data-accent",t.accent||"forest");}catch(e){}})();',
-          }}
-        />
         <Shell>{children}</Shell>
       </body>
     </html>

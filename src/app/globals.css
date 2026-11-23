@@ -321,7 +321,8 @@ body {
 /* ---------------------------------------------------------------
    Appearance: accent themes + dark mode.
    `data-accent` on <html> remaps the forest scale; `.dark` remaps the
-   neutrals. Set by src/lib/theme.tsx (persisted per browser).
+   neutrals. The app is fixed to the yellow ("amber") accent in light
+   mode (layout.tsx); the other accents and .dark are unused for now.
    --------------------------------------------------------------- */
 :root {
   --chart-accent: #1B7A4A;
@@ -347,18 +348,19 @@ body {
   --wash-a: 30 95 174;
 }
 
+/* The app's colour: a dark yellow, kept dark enough for white text on buttons. */
 [data-accent="amber"] {
   --color-forest-50: 248 244 238;
   --color-forest-100: 238 231 216;
   --color-forest-200: 219 204 172;
-  --color-forest-500: 150 105 11;
-  --color-forest-600: 122 86 9;
-  --color-forest-700: 92 64 7;
-  --chart-accent: #A07823;
+  --color-forest-500: 135 95 10;   /* #875F0A primary */
+  --color-forest-600: 110 77 8;    /* #6E4D08 hover   */
+  --color-forest-700: 83 58 6;     /* #533A06 deep    */
+  --chart-accent: #906C20;
   --bd-base: #2E2008;
-  --glow-a: 165 126 45;
-  --glow-b: 102 71 7;
-  --wash-a: 150 105 11;
+  --glow-a: 149 113 41;
+  --glow-b: 92 64 6;
+  --wash-a: 135 95 10;
 }
 
 [data-accent="orange"] {

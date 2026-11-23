@@ -1,26 +1,19 @@
 "use client";
 
 /**
- * Appearance: light/dark mode + accent colour, persisted per browser.
- * The CSS custom properties in globals.css do the heavy lifting — this
- * provider sets `.dark` and `data-accent` on <html>, and exposes the
- * accent's chart ramp (SVG ramps need real hex values, not CSS vars).
+ * Appearance is fixed: light mode with the yellow ("amber") accent. There is no
+ * picker; `data-accent` is set on <html> in layout.tsx, and globals.css still
+ * holds the other accents and the dark mode in case a picker comes back.
+ * This provider exposes the accent's chart ramp (SVG ramps need real hex
+ * values, not CSS vars).
  */
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 
 export type ThemeMode = "light" | "dark";
 export type Accent = "forest" | "blue" | "amber" | "orange" | "purple";
 
-const KEY = "mugis.theme.v1";
-
-/** Picker order; swatches are brightened hue chips for the dark sidebar. */
-export const ACCENTS: { id: Accent; label: string; swatch: string }[] = [
-  { id: "forest", label: "MUGIS green", swatch: "#12854E" },
-  { id: "blue", label: "Blue", swatch: "#2F6FC4" },
-  { id: "amber", label: "Yellow", swatch: "#D9A21B" },
-  { id: "orange", label: "Orange", swatch: "#E05A1F" },
-  { id: "purple", label: "Purple", swatch: "#8B4BE8" },
-];
+/** The one theme the app uses. */
+export const THEME = { mode: "light", accent: "amber" } as const satisfies { mode: ThemeMode; accent: Accent };
 
 type Rgb = [number, number, number];
 
@@ -28,7 +21,7 @@ type Rgb = [number, number, number];
 const BASE: Record<Accent, Rgb> = {
   forest: [0, 108, 56],
   blue: [30, 95, 174],
-  amber: [150, 105, 11],
+  amber: [135, 95, 10],
   orange: [194, 65, 12],
   purple: [109, 40, 217],
 };
@@ -53,58 +46,17 @@ export function rampFor(accent: Accent, mode: ThemeMode): (t: number) => string 
 type ThemeCtx = {
   mode: ThemeMode;
   accent: Accent;
-  setMode: (m: ThemeMode) => void;
-  setAccent: (a: Accent) => void;
-  /** Ordered single-hue ramp in the current accent + mode. t in [0,1]. */
+  /** Ordered single-hue ramp in the app's accent + mode. t in [0,1]. */
   ramp: (t: number) => string;
 };
 
 const Ctx = createContext<ThemeCtx | null>(null);
 
-function readSaved(): { mode: ThemeMode; accent: Accent } | null {
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as { mode?: string; accent?: string };
-    return {
-      mode: p.mode === "dark" ? "dark" : "light",
-      accent: ACCENTS.some((a) => a.id === p.accent) ? (p.accent as Accent) : "forest",
-    };
-  } catch {
-    return null;
-  }
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Lazy init from storage — safe because everything that consumes the theme
-  // mounts after the auth/store gates, i.e. post-hydration.
-  const [mode, setModeState] = useState<ThemeMode>(
-    () => (typeof window === "undefined" ? "light" : readSaved()?.mode ?? "light")
-  );
-  const [accent, setAccentState] = useState<Accent>(
-    () => (typeof window === "undefined" ? "forest" : readSaved()?.accent ?? "forest")
-  );
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", mode === "dark");
-    root.setAttribute("data-accent", accent);
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify({ mode, accent }));
-    } catch {
-      /* ignore */
-    }
-  }, [mode, accent]);
-
-  const setMode = useCallback((m: ThemeMode) => setModeState(m), []);
-  const setAccent = useCallback((a: Accent) => setAccentState(a), []);
-  const ramp = useMemo(() => rampFor(accent, mode), [accent, mode]);
-
   const value = useMemo(
-    () => ({ mode, accent, setMode, setAccent, ramp }),
-    [mode, accent, setMode, setAccent, ramp]
+    () => ({ mode: THEME.mode, accent: THEME.accent, ramp: rampFor(THEME.accent, THEME.mode) }),
+    []
   );
-
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

@@ -11,7 +11,7 @@ import PatientSearch from "@/components/PatientSearch";
 import NotificationsDrawer from "@/components/NotificationsDrawer";
 import { CLINICAL, SessionProvider, useSession, type Role } from "@/lib/session";
 import { Modal } from "@/components/ui";
-import { ACCENTS, ThemeProvider, useTheme } from "@/lib/theme";
+import { ThemeProvider } from "@/lib/theme";
 import { initials } from "@/lib/format";
 
 /** soon: the screen exists but its API does not yet — shown with a tag. */
@@ -425,72 +425,6 @@ function ProfileRow({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Light/dark + accent colour — stored in this browser, applied instantly. */
-function AppearanceControls() {
-  const { mode, setMode, accent, setAccent } = useTheme();
-  return (
-    <div className="mx-3 mb-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[12px] font-semibold text-white/35">Appearance</span>
-        <div className="flex rounded-[9px] bg-black/25 p-0.5" role="group" aria-label="Colour mode">
-          <button
-            type="button"
-            onClick={() => setMode("light")}
-            aria-label="Light mode"
-            aria-pressed={mode === "light"}
-            className={
-              "flex h-6 w-7 items-center justify-center rounded-[7px] transition-colors touch:h-10 touch:w-11 " +
-              (mode === "light" ? "bg-white/90 text-black/75" : "text-white/45 hover:text-white/80")
-            }
-          >
-            {ic(ICONS.sun, 13)}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("dark")}
-            aria-label="Dark mode"
-            aria-pressed={mode === "dark"}
-            className={
-              "flex h-6 w-7 items-center justify-center rounded-[7px] transition-colors touch:h-10 touch:w-11 " +
-              (mode === "dark" ? "bg-white/90 text-black/75" : "text-white/45 hover:text-white/80")
-            }
-          >
-            {ic(ICONS.moon, 13)}
-          </button>
-        </div>
-      </div>
-      {/* Each button is a 40px target on touch; the colour dot inside stays small. */}
-      <div className="mt-2 grid grid-cols-5 justify-items-center" role="group" aria-label="Accent colour">
-        {ACCENTS.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onClick={() => setAccent(a.id)}
-            title={a.label}
-            aria-label={`${a.label} theme`}
-            aria-pressed={accent === a.id}
-            className="group flex h-7 w-full max-w-10 items-center justify-center touch:h-10"
-          >
-            <span
-              className={
-                "flex h-6 w-6 items-center justify-center rounded-full transition-all touch:h-7 touch:w-7 " +
-                (accent === a.id ? "ring-2 ring-white/85" : "ring-1 ring-white/20 group-hover:ring-white/55")
-              }
-              style={{ background: a.swatch }}
-            >
-              {accent === a.id && (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 13l4.5 4.5L19 7" />
-                </svg>
-              )}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* Running backend version, from GET /health. Fetched once per page load. */
 let versionPromise: Promise<string> | null = null;
 function loadVersion(): Promise<string> {
@@ -530,7 +464,6 @@ function Sidebar() {
       <nav className="scrollbar-none flex-1 overflow-y-auto px-3 pb-3">
         <NavLinks />
       </nav>
-      <AppearanceControls />
       <div className="mx-4 border-t border-white/10" />
       <div className="p-3">
         <ProfileRow />
@@ -588,7 +521,6 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
         <nav className="scrollbar-none flex-1 overflow-y-auto overscroll-contain px-2.5 pb-3 short:flex-none short:overflow-visible">
           <NavLinks onNavigate={onClose} />
         </nav>
-        <AppearanceControls />
         <div className="mx-4 border-t border-white/10" />
         <div className="p-2.5">
           <ProfileRow onNavigate={onClose} />
