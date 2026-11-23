@@ -118,14 +118,15 @@ export default function DashboardPage() {
               <ul className="divide-y divide-ink/[0.05]">
                 {recent.map((p) => (
                   <li key={p.id}>
-                    {/* phone: name over registry no. — side by side the name is cut to a few letters */}
-                    <Link href={`/patients/${p.id}`} className="flex items-center gap-3 py-2.5 hover:text-forest-600 sm:py-2">
-                      <span className="flex min-w-0 flex-1 flex-col-reverse sm:flex-row sm:items-center sm:gap-3">
-                        <span className="font-mono text-[13px] text-soot">{p.registry_no}</span>
-                        <span className="min-w-0 break-words text-sm font-medium text-ink line-clamp-2 sm:flex-1 sm:line-clamp-1">{p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}</span>
+                    {/* Phones: the name gets the full width, with the registry no. and access under it.
+                        From sm one row: registry no., name, access, date (sm:contents lets order apply). */}
+                    <Link href={`/patients/${p.id}`} className="block py-2.5 hover:text-forest-600 sm:flex sm:items-center sm:gap-3 sm:py-2">
+                      <span className="min-w-0 break-words text-sm font-medium text-ink line-clamp-2 sm:order-2 sm:flex-1 sm:line-clamp-1">{p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 sm:contents">
+                        <span className="font-mono text-[13px] text-soot sm:order-1">{p.registry_no}</span>
+                        <Badge tone={ACCESS_LABEL[p.access].tone} className="shrink-0 sm:order-3">{ACCESS_LABEL[p.access].text}</Badge>
                       </span>
-                      <Badge tone={ACCESS_LABEL[p.access].tone} className="shrink-0">{ACCESS_LABEL[p.access].text}</Badge>
-                      <span className="hidden text-[13px] text-soot/72 sm:inline">{fmtDate(p.updated_at)}</span>
+                      <span className="hidden text-[13px] text-soot/72 sm:order-4 sm:inline">{fmtDate(p.updated_at)}</span>
                     </Link>
                   </li>
                 ))}

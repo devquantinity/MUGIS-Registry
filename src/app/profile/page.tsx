@@ -24,11 +24,12 @@ export default function ProfilePage() {
       <PageHeader title="Profile" subtitle="Your account, centres and sign-in security." />
 
       <Card>
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-forest-500 text-xl font-bold text-white">
+        {/* Below 360px the avatar sits above the name so the name and email keep the full width. */}
+        <div className="flex flex-col items-start gap-3 xs:flex-row xs:flex-wrap xs:items-center xs:gap-4">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-forest-500 text-lg font-bold text-white xs:h-16 xs:w-16 xs:text-xl">
             {initials(session.name)}
           </span>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 max-w-full xs:flex-1">
             <h2 className="break-words font-display text-xl font-bold text-ink">{me.full_name ?? session.name}</h2>
             <p className="break-all text-sm text-soot/80">{me.email}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -170,8 +171,8 @@ function ChangePassword({ open, onClose, onDone }: { open: boolean; onClose: () 
           <input type="password" className="input" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" /></div>
         <p className="text-[13px] text-soot/72">You will be signed out on every device and sign in again with the new password.</p>
         {error && <p className="text-[13px] text-danger-700">{error}</p>}
-        <div className="flex gap-2">
-          <button onClick={save} disabled={busy || !current || !next || !confirm} className="btn-primary">Change password</button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={save} disabled={busy || !current || !next || !confirm} className="btn-primary whitespace-nowrap">Change password</button>
           <button onClick={onClose} className="btn-secondary">Cancel</button>
         </div>
       </div>

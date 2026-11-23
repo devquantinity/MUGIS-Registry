@@ -139,6 +139,10 @@ for a small phone first and checked at widths from 280px (Galaxy Fold) to
 - `short:` is `(max-height: 500px)`, a phone held sideways: the header scrolls
   away and the tab bar shows icons only.
 - On a phone the tab bar slides away while the keyboard is up.
+- Nothing may stick out past the screen edge, not even a hidden tooltip: a
+  phone then scrolls sideways. Chart tooltips open towards the middle.
+- A badge or date beside a name drops under it when the name would get less
+  than 10rem (`flex-wrap`, with `grow basis-40` on the name).
 - Safe-area insets and bar heights are CSS variables at the top of
   `globals.css`.
 

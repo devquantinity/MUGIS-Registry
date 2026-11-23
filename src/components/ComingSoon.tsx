@@ -21,8 +21,9 @@ export default function ComingSoon({ title, what, phase }: {
     <div className="mx-auto max-w-3xl">
       <PageHeader title={title} />
       <Card>
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 inline-flex shrink-0 items-center rounded-md bg-gold-100 px-2 py-1 text-[12px] font-bold uppercase tracking-wide text-gold-600">
+        {/* Badge above the text on phones; beside it from sm, where there is room. */}
+        <div className="flex flex-col items-start gap-2.5 sm:flex-row sm:gap-3">
+          <span className="inline-flex shrink-0 items-center rounded-md bg-gold-100 px-2 py-1 text-[12px] font-bold uppercase tracking-wide text-gold-600 sm:mt-0.5">
             Not available yet
           </span>
           <div className="min-w-0">
@@ -31,7 +32,7 @@ export default function ComingSoon({ title, what, phase }: {
           </div>
         </div>
         <p className="mt-4 border-t border-line pt-3 text-[13px] text-soot/75">
-          Available now: <Link href="/patients" className="font-medium text-forest-600 hover:underline">patient records</Link>,
+          Available now: <Link href="/patients" className="font-medium text-forest-600 hover:underline touch:py-2">patient records</Link>,
           access requests, your profile and — for administrators — users, centres and registrations.
         </p>
       </Card>

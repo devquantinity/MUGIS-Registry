@@ -112,9 +112,10 @@ export default function PatientsPage() {
               const identity = p.id_number_masked ?? p.id_number;
               return (
                 <li key={p.id} className="card relative min-w-0 p-3.5 transition-colors active:bg-cream/70">
-                  <div className="flex items-start justify-between gap-2">
+                  {/* The badge drops under the name when the name would get less than 10rem beside it. */}
+                  <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
                     {/* The name's ::after covers the card, so the whole card opens the patient. */}
-                    <Link href={`/patients/${p.id}`} className="min-w-0 text-base font-semibold leading-snug text-ink after:absolute after:inset-0 after:rounded-[14px]">
+                    <Link href={`/patients/${p.id}`} className="min-w-0 grow basis-40 text-base font-semibold leading-snug text-ink after:absolute after:inset-0 after:rounded-[14px]">
                       {p.full_name ?? <span className="font-normal italic text-soot/60">Restricted</span>}
                     </Link>
                     <Badge tone={ACCESS_LABEL[p.access].tone} className="mt-0.5 shrink-0">{ACCESS_LABEL[p.access].text}</Badge>

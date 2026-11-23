@@ -223,7 +223,7 @@ function NewDiagnosesCard({ by, centre, hueOf, ready }: {
   return (
     <Card className="lg:col-span-2">
       <SectionTitle right={
-        <div className="w-[min(16rem,55vw)]">
+        <div className="w-full sm:w-64">
           <Select ariaLabel="Cancer type" value={type} onChange={setType} size="sm"
             options={[{ value: "", label: "All cancer types" }, ...types.map((t) => ({ value: t.code, label: t.name }))]} />
         </div>
@@ -273,6 +273,10 @@ function ApproachRow({ group, name }: { group: DashboardGroup; name: string }) {
   const total = group.cancer_records;
   const parts = APPROACHES.map((a) => ({ ...a, n: group.surgical_approach[a.key] })).filter((p) => p.n > 0);
   const summary = parts.map((p) => `${p.label} ${p.n}`).join(", ");
+  // Where each segment's middle falls along the bar: its tooltip opens towards the bar's centre,
+  // so it never sticks out past the card (a phone would scroll sideways for it).
+  let start = 0;
+  const mids = parts.map((p) => { const w = p.n / total; const mid = start + w / 2; start += w; return mid; });
   return (
     <li>
       <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -280,10 +284,11 @@ function ApproachRow({ group, name }: { group: DashboardGroup; name: string }) {
         <span className="text-xs font-bold tabular-nums text-ink">{total}</span>
       </div>
       <div className="flex h-[10px] w-full gap-[2px]" role="img" aria-label={`${name}: ${summary}`}>
-        {parts.map((p) => (
+        {parts.map((p, i) => (
           <div key={p.key} className="group relative h-full first:rounded-l-full last:rounded-r-full transition-[filter] hover:brightness-[0.9]"
             style={{ width: `${(p.n / total) * 100}%`, background: p.color, minWidth: 3 }}>
-            <span className="pointer-events-none absolute bottom-[14px] left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[12px] font-semibold text-paper opacity-0 shadow-raised transition-opacity group-hover:opacity-100">
+            <span className={"pointer-events-none absolute bottom-[14px] z-10 hidden whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[12px] font-semibold text-paper shadow-raised group-hover:block " +
+              (mids[i] > 0.5 ? "right-0" : "left-0")}>
               {p.label} · {p.n} ({Math.round((p.n / total) * 100)}%)
             </span>
           </div>
@@ -360,9 +365,14 @@ function StackedColumns({ months, totals, series, height = 170 }: {
           })}
         </div>
       </div>
+      {/* Phones: twelve columns leave about 20px a month, so every other month (counted from
+          the latest) is labelled, its label free to use the unlabelled neighbours' room. */}
       <div className="mt-1.5 flex gap-[6px]" aria-hidden>
         {months.map((m, i) => (
-          <p key={m} className="flex-1 truncate text-center text-[11.5px] text-soot/72">{monthLabel(m, i)}</p>
+          <p key={m} className={"min-w-0 flex-1 whitespace-nowrap text-[11.5px] text-soot/72 sm:truncate sm:text-center " +
+            ((months.length - 1 - i) % 2 ? "invisible sm:visible" : "")}>
+            <span className="relative left-1/2 inline-block -translate-x-1/2 sm:static sm:inline sm:translate-x-0">{monthLabel(m, i)}</span>
+          </p>
         ))}
       </div>
       {/* A table ignores sr-only's clipping: the wrapper does it. */}
@@ -387,7 +397,7 @@ function Segmented<T extends string>({ value, onChange, options, ariaLabel }: {
       className="inline-flex items-center rounded-[10px] border border-white/60 bg-white/60 p-0.5 shadow-[0_0_0_1px_rgba(10,30,20,0.04)] backdrop-blur-sm dark:border-white/[0.08] dark:bg-white/[0.06]">
       {options.map(([v, l]) => (
         <button key={v} role="radio" aria-checked={value === v} onClick={() => onChange(v)}
-          className={"rounded-[8px] px-3 py-1 text-[14px] font-medium transition-colors touch:py-2 " +
+          className={"rounded-[8px] px-3 py-1 text-[14px] font-medium transition-colors touch:min-h-[40px] touch:py-2 " +
             (value === v ? "bg-forest-500 text-white" : "text-soot/72 hover:text-ink")}>
           {l}
         </button>

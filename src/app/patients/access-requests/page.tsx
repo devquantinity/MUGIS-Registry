@@ -103,8 +103,8 @@ export default function AccessRequestsPage() {
           <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
             {items.map((r) => (
               <li key={r.id} className="card min-w-0 p-3.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                  <div className="min-w-0 grow basis-40">
                     {box === "incoming" ? (
                       <>
                         <p className="text-base font-semibold leading-snug text-ink">{r.requester.full_name || r.requester.email}</p>

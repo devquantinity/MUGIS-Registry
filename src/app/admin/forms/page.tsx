@@ -185,11 +185,17 @@ function SectionEditor({ section, isNew, savedFields, savedOptions, onChange, on
   return (
     <Card padded={false} className={section.retired ? "opacity-75" : ""}>
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <button className="flex min-w-0 flex-1 items-center gap-2 text-left touch:min-h-[44px]" onClick={() => setOpen(!open)} aria-expanded={open}>
+        {/* The field count sits under the title, and "In use" drops under both when the title
+            would get less than 10rem beside it. */}
+        <button className="flex min-w-0 grow basis-40 items-center gap-2 text-left touch:min-h-[44px]" onClick={() => setOpen(!open)} aria-expanded={open}>
           <span className={"text-soot/70 transition-transform " + (open ? "rotate-90" : "")}>▸</span>
-          <span className="min-w-0 break-words font-display text-base font-bold text-ink">{section.label}</span>
-          <span className="shrink-0 text-[12.5px] text-soot/72">{live} field{live === 1 ? "" : "s"}{section.retired ? " · retired" : ""}</span>
-          {isNew && <Badge tone="info">New</Badge>}
+          <span className="min-w-0">
+            <span className="block break-words font-display text-base font-bold leading-snug text-ink">{section.label}</span>
+            <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-soot/72">
+              {live} field{live === 1 ? "" : "s"}{section.retired ? " · retired" : ""}
+              {isNew && <Badge tone="info">New</Badge>}
+            </span>
+          </span>
         </button>
         {isNew
           ? <button className="text-[13px] font-semibold text-danger-700 hover:underline touch:px-1 touch:py-3" onClick={onRemove}>Remove</button>
@@ -413,14 +419,17 @@ function RecordLimit() {
 
   return (
     <Card className="mb-4">
-      <div className="flex flex-wrap items-end gap-3">
+      {/* The note sits beside the field when there is room for 16rem of it, else below. */}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
         <div>
           <label className="label" htmlFor="record-limit">Cancer records per patient</label>
-          <input id="record-limit" className="input !w-24" type="number" min={1} max={20} value={value}
-            onChange={(e) => { setValue(e.target.value); setMsg(null); }} disabled={saved === null} />
+          <div className="flex gap-2">
+            <input id="record-limit" className="input !w-24" type="number" min={1} max={20} value={value}
+              onChange={(e) => { setValue(e.target.value); setMsg(null); }} disabled={saved === null} />
+            <button className="btn-primary" onClick={save} disabled={busy || !valid || n === saved}>{busy ? "Saving…" : "Save"}</button>
+          </div>
         </div>
-        <button className="btn-primary" onClick={save} disabled={busy || !valid || n === saved}>{busy ? "Saving…" : "Save"}</button>
-        <p className="min-w-0 flex-1 text-[13px] text-soot/80">
+        <p className="min-w-0 grow basis-64 text-[13px] text-soot/80">
           The most cancer records one patient can have (1–20). Lowering it keeps records that already exist; it only stops new ones.
         </p>
       </div>

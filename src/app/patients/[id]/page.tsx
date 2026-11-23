@@ -100,6 +100,15 @@ export default function PatientPage() {
     setForm(toForm(patient!));
     setSaveError(null);
     setEditing(true);
+    // On phones the cancer records come first, so the form opens below the fold: bring it into view.
+    requestAnimationFrame(() => {
+      const el = document.getElementById("demography");
+      const top = el?.getBoundingClientRect().top ?? 0;
+      if (el && (top < 0 || top > window.innerHeight * 0.4)) {
+        const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        el.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "start" });
+      }
+    });
   }
 
   async function save(e: React.FormEvent) {
@@ -138,7 +147,7 @@ export default function PatientPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card id="demography" className="scroll-mt-[calc(var(--sticky-top)+0.75rem)] lg:col-span-2">
           <SectionTitle right={<Badge tone={badge.tone}>{badge.text}</Badge>}>Demography</SectionTitle>
           {editing && form ? (
             <form onSubmit={save}>

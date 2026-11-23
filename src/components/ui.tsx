@@ -8,10 +8,10 @@ import { crumbsFor } from "@/lib/crumbs";
 
 /* ---------------- primitives ---------------- */
 
-export function Card({ children, className = "", padded = true }: {
-  children: React.ReactNode; className?: string; padded?: boolean;
+export function Card({ children, className = "", padded = true, id }: {
+  children: React.ReactNode; className?: string; padded?: boolean; id?: string;
 }) {
-  return <div className={`card ${padded ? "p-4" : ""} ${className}`}>{children}</div>;
+  return <div id={id} className={`card ${padded ? "p-4" : ""} ${className}`}>{children}</div>;
 }
 
 /**
@@ -66,7 +66,7 @@ export function PageHeader({ title, subtitle, actions, crumbs = true }: {
 
 export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="mb-2.5 flex items-center justify-between gap-3">
+    <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
       <h2 className="text-[15px] font-semibold text-ink">{children}</h2>
       {right}
     </div>
@@ -384,7 +384,7 @@ export function Modal({ open, onClose, title, children, wide }: {
         className={`mg-sheet relative z-10 max-h-sheet w-full overflow-y-auto overscroll-contain rounded-t-3xl border border-white/60 dark:border-white/[0.08] bg-white/95 dark:bg-paper/95 shadow-raised backdrop-blur-xl sm:max-h-[85vh] sm:rounded-2xl short:max-h-[calc(100dvh-1rem)] sm:bg-white/85 sm:dark:bg-paper/90 ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"}`}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ink/[0.06] bg-white/95 dark:bg-paper/95 px-5 py-3.5 backdrop-blur-xl sm:bg-white/85 sm:dark:bg-paper/90">
           <h3 className="font-display text-base font-bold text-ink">{title}</h3>
-          <button onClick={onClose} aria-label="Close" className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-full text-soot hover:bg-cream touch:h-11 touch:w-11">
+          <button onClick={onClose} aria-label="Close" className="-mr-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-soot hover:bg-cream touch:h-11 touch:w-11">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>

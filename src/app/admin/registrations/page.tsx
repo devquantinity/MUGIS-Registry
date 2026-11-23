@@ -120,8 +120,8 @@ export default function RegistrationsPage() {
       <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
         {(data?.items ?? []).map((r) => (
           <li key={r.id} className="card flex min-w-0 flex-col p-3.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
+            <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+              <div className="min-w-0 grow basis-40">
                 <p className="text-base font-semibold leading-snug text-ink">{r.full_name ?? "—"}</p>
                 <p className="break-all text-[13px] text-soot">{r.email}</p>
                 {r.phone && <p className="text-[13px] text-soot">{r.phone}</p>}

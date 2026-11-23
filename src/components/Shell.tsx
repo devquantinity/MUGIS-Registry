@@ -608,9 +608,10 @@ function MobileHeader({ onSearch, onNotifications }: { onSearch: () => void; onN
   return (
     <header className="no-print pt-safe sticky top-0 z-30 border-b border-ink/[0.05] bg-white/70 dark:bg-paper/60 backdrop-blur-xl short:static xl:hidden">
       <div className="flex h-14 items-center justify-between gap-2 pl-3 pr-3 sm:pl-5 sm:pr-4">
-        <Link href="/" className="flex h-11 min-w-0 items-center gap-2 rounded-lg px-1" aria-label="MUGIS — home">
+        <Link href="/" className="flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-1" aria-label="MUGIS — home">
           <Image src="/mugis-mark.png" alt="" width={250} height={250} className="h-7 w-7 shrink-0" />
-          <span className="text-sm font-bold tracking-tight text-ink">MUGIS</span>
+          {/* Below 360px the clinical header also carries search and the bell: the mark alone fits. */}
+          <span className={`text-sm font-bold tracking-tight text-ink ${clinical ? "hidden xs:inline" : ""}`}>MUGIS</span>
         </Link>
         <div className="flex shrink-0 items-center gap-1">
           {clinical && (

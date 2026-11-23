@@ -313,7 +313,7 @@ export function Select<T extends string = string>({
                 onClick={() => choose(i)}
                 onMouseEnter={() => setActive(i)}
                 className={
-                  "flex w-full items-center justify-between gap-3 rounded-lg px-3 text-left transition-colors " +
+                  "flex w-full items-center justify-between gap-3 rounded-lg px-3 text-left transition-colors touch:min-h-[44px] " +
                   (sm ? "py-2 text-[14px] " : "py-2.5 text-[14.5px] ") +
                   (o.disabled
                     ? "cursor-not-allowed text-soot/40 "

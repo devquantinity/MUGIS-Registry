@@ -119,7 +119,7 @@ function Section({ title, hint, box, empty, href, onNavigate, render }: {
 }) {
   return (
     <section>
-      <div className="mb-2 flex items-baseline justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <h3 className="text-[14.5px] font-semibold text-ink">
           {title}
           {box && box.total > 0 && <Badge tone="warn" className="ml-2 align-middle">{box.total}</Badge>}
@@ -132,15 +132,16 @@ function Section({ title, hint, box, empty, href, onNavigate, render }: {
         <ul className="overflow-hidden rounded-xl border border-ink/[0.06] bg-paper/80 dark:bg-white/[0.04]">
           {box.items.map((r) => (
             <li key={r.id} className="border-b border-ink/[0.05] last:border-b-0">
-              <Link href={href} onClick={onNavigate} className="flex items-start gap-3 px-3 py-2.5 hover:bg-ink/[0.03] touch:py-3">
-                <div className="min-w-0 flex-1">{render(r)}</div>
+              <Link href={href} onClick={onNavigate} className="flex flex-wrap items-start gap-x-3 gap-y-0.5 px-3 py-2.5 hover:bg-ink/[0.03] touch:py-3">
+                {/* the date drops under the text when the text would get less than 10rem */}
+                <div className="min-w-0 grow basis-40">{render(r)}</div>
                 <span className="shrink-0 pt-0.5 text-[12.5px] text-soot/65">{fmtDate(r.created_at)}</span>
               </Link>
             </li>
           ))}
         </ul>
       )}
-      <Link href={href} onClick={onNavigate} className="mt-2 inline-block text-[13px] font-semibold text-forest-600 touch:py-2">
+      <Link href={href} onClick={onNavigate} className="mt-2 inline-block text-[13px] font-semibold text-forest-600 touch:py-2.5">
         {box && box.total > box.items.length ? `View all ${box.total}` : "Open access requests"}
       </Link>
     </section>

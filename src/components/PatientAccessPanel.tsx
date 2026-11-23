@@ -84,7 +84,7 @@ export default function PatientAccessPanel({ patientId }: { patientId: string })
               {g.status === "pending" ? (
                 <Badge tone="warn">Asked</Badge>
               ) : (
-                <button className="shrink-0 text-[13px] font-semibold text-danger-700 hover:underline disabled:opacity-50 touch:-my-1 touch:py-2.5"
+                <button className="shrink-0 text-[13px] font-semibold text-danger-700 hover:underline disabled:opacity-50 touch:-my-1.5 touch:py-3"
                   onClick={() => revoke(g)} disabled={busy}>Remove</button>
               )}
             </li>

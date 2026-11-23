@@ -363,7 +363,7 @@ function ExportCard({ job: j, onDownload }: { job: ExportJob; onDownload: () => 
           {j.status === "ready" && j.expires_at && <> · deleted {fmtDateTime(j.expires_at)}</>}
         </p>
         {j.status === "ready" && (
-          <button onClick={onDownload} className="btn-primary !min-h-0 px-3.5 py-1.5 text-[13.5px] touch:min-h-[44px]">
+          <button onClick={onDownload} className="btn-primary !min-h-0 px-3.5 py-1.5 text-[13.5px] touch:!min-h-[44px]">
             Download
           </button>
         )}
@@ -481,7 +481,7 @@ function ExportLog() {
       }>
         {(data?.items ?? []).map((e) => (
           <tr key={e.id} className="hover:bg-cream/50">
-            <Td><span className="font-medium text-ink">{who(e)}</span>{e.user.full_name && <span className="block text-xs text-soot/72">{e.user.email}</span>}</Td>
+            <Td><span className="font-medium text-ink">{who(e)}</span>{e.user.full_name && <span className="block break-all text-xs text-soot/72">{e.user.email}</span>}</Td>
             <Td><span className="whitespace-nowrap text-xs text-soot">{fmtDateTime(e.created_at)}</span></Td>
             <Td>{FORMAT_LABEL[e.format]}{e.password_protected && <Badge tone="gold" className="ml-1.5">Password</Badge>}</Td>
             <Td><span className="text-xs text-soot">{filterSummary(e, typeName)}</span></Td>

@@ -71,8 +71,8 @@ export default function AdminCentresPage() {
       <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:hidden">
         {(centres ?? []).map((c) => (
           <li key={c.id} className="card flex min-w-0 flex-col p-3.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
+            <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+              <div className="min-w-0 grow basis-40">
                 <p className="text-base font-semibold leading-snug text-ink">{c.name}</p>
                 <p className="mt-0.5 text-[13.5px] text-soot"><span className="font-semibold text-ink">{c.code}</span>{c.state ? ` · ${c.state}` : ""}</p>
               </div>
